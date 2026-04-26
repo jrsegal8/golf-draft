@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Golf Draft League</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #ffffff;
+      --bg-2: #f7f6f3;
+      --bg-3: #eeede9;
+      --text: #1a1a18;
+      --text-2: #6b6b67;
+      --text-3: #9a9a96;
+      --border: rgba(0,0,0,0.1);
+      --border-2: rgba(0,0,0,0.18);
+      --radius: 10px;
+      --radius-lg: 14px;
+      --green: #0f6e56;
+      --green-bg: #e0f5ee;
+      --red: #993c1d;
+      --red-bg: #faece7;
+      --amber: #7a4a08;
+      --amber-bg: #faeeda;
+      --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, sans-serif;
+      --shadow: 0 1px 3px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #1a1a18;
+        --bg-2: #232320;
+        --bg-3: #2a2a27;
+        --text: #f0ede8;
+        --text-2: #9a9a96;
+        --text-3: #6b6b67;
+        --border: rgba(255,255,255,0.08);
+        --border-2: rgba(255,255,255,0.15);
+        --green: #4ec99e;
+        --green-bg: #082e20;
+        --red: #f09070;
+        --red-bg: #2e1208;
+        --amber: #e9992a;
+        --amber-bg: #2a1c06;
+        --shadow: 0 1px 3px rgba(0,0,0,0.3);
+      }
+    }
+
+    body { font-family: var(--font); background: var(--bg-3); color: var(--text); min-height: 100vh; }
+
+    /* ── Nav ── */
+    .topnav {
+      background: var(--bg); border-bottom: 1px solid var(--border);
+      padding: 0 1.5rem; display: flex; align-items: center;
+      justify-content: space-between; height: 56px;
+      position: sticky; top: 0; z-index: 100; box-shadow: var(--shadow);
+    }
+    .nav-brand {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 16px; font-weight: 700; color: var(--text); letter-spacing: -0.3px;
+    }
+    .tour-pill {
+      font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 20px;
+      background: var(--green-bg); color: var(--green);
+      letter-spacing: 0.5px; text-transform: uppercase;
+    }
+    .nav-right { display: flex; align-items: center; gap: 10px; }
+    .round-info { font-size: 12px; color: var(--text-2); display: none; }
+
+    /* ── Layout ── */
+    .app { max-width: 980px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+
+    /* ── Banner ── */
+    .tournament-banner {
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 14px 18px;
+      margin-bottom: 1.25rem; display: flex; align-items: center;
+      justify-content: space-between; box-shadow: var(--shadow); gap: 12px; flex-wrap: wrap;
+    }
+    .banner-left { display: flex; align-items: center; gap: 12px; }
+    .banner-icon {
+      width: 40px; height: 40px; background: var(--green-bg);
+      border-radius: 10px; display: flex; align-items: center; justify-content: center;
+      font-size: 20px; flex-shrink: 0;
+    }
+    .banner-title { font-size: 16px; font-weight: 700; color: var(--text); }
+    .banner-sub { font-size: 12px; color: var(--text-2); margin-top: 2px; }
+    .banner-stats { display: flex; gap: 20px; flex-wrap: wrap; }
+    .stat-item { text-align: right; }
+    .stat-val { font-size: 18px; font-weight: 700; color: var(--text); }
+    .stat-label { font-size: 11px; color: var(--text-3); margin-top: 1px; }
+
+    /* ── Tabs ── */
+    .tabs {
+      display: flex; gap: 4px; margin-bottom: 1.25rem;
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 4px; box-shadow: var(--shadow);
+    }
+    .tab {
+      flex: 1; padding: 8px 10px; border-radius: 7px; border: none;
+      font-size: 13px; font-weight: 500; cursor: pointer;
+      background: transparent; color: var(--text-2); transition: all 0.15s; white-space: nowrap;
+    }
+    .tab.active { background: var(--text); color: var(--bg); box-shadow: var(--shadow); }
+    .tab:hover:not(.active) { background: var(--bg-2); color: var(--text); }
+
+    .section { display: none; }
+    .section.active { display: block; }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); overflow: hidden;
+      margin-bottom: 1rem; box-shadow: var(--shadow);
+    }
+    .info-box {
+      background: var(--bg-2); border-radius: var(--radius);
+      padding: 14px 16px; font-size: 13px; color: var(--text-2);
+      margin-bottom: 1rem; line-height: 1.7; border: 1px solid var(--border);
+    }
+
+    /* ── Status bar ── */
+    .status-bar {
+      display: flex; align-items: flex-start; flex-direction: column; gap: 2px;
+      padding: 8px 16px; background: var(--bg-2);
+      border-bottom: 1px solid var(--border);
+      font-size: 12px; color: var(--text-2);
+    }
+    .live-dot {
+      width: 7px; height: 7px; border-radius: 50%; background: #22c78a;
+      display: inline-block; margin-right: 5px; animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse { 0%,100%{opacity:1}50%{opacity:.35} }
+
+    /* ── Player avatar ── */
+    .player-avatar {
+      width: 36px; height: 36px; border-radius: 50%;
+      object-fit: cover; flex-shrink: 0;
+      background: var(--bg-2);
+      border: 2px solid var(--border);
+    }
+    .player-avatar-sm {
+      width: 28px; height: 28px; border-radius: 50%;
+      object-fit: cover; flex-shrink: 0;
+      background: var(--bg-2);
+      border: 1.5px solid var(--border);
+    }
+    .avatar-fallback {
+      width: 36px; height: 36px; border-radius: 50%;
+      background: var(--bg-2); border: 2px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 700; color: var(--text-3); flex-shrink: 0;
+    }
+    .avatar-fallback-sm {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: var(--bg-2); border: 1.5px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 700; color: var(--text-3); flex-shrink: 0;
+    }
+
+    /* ── Leaderboard ── */
+    .team-header {
+      display: grid; grid-template-columns: auto 1fr auto;
+      align-items: center; gap: 12px; padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+    }
+    .rank-badge {
+      width: 28px; height: 28px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 700; flex-shrink: 0;
+    }
+    .rank-1 { background: #fac030; color: #5a3500; }
+    .rank-2 { background: #e0e0df; color: #444; }
+    .rank-3 { background: #f5c4b3; color: #4a1b0c; }
+    .rank-n { background: var(--bg-2); color: var(--text-3); border: 1px solid var(--border); }
+    .team-name-row {
+      display: flex; align-items: center; gap: 9px;
+      font-size: 15px; font-weight: 700; color: var(--text);
+    }
+    .color-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .team-meta { font-size: 11px; color: var(--text-3); margin-top: 1px; }
+    .team-total { font-size: 26px; font-weight: 700; color: var(--text); letter-spacing: -1px; }
+    .score-under { color: var(--green); }
+    .score-over  { color: var(--red); }
+
+    /* ── Player grid in leaderboard ── */
+    .players-grid { display: grid; grid-template-columns: repeat(3, 1fr); }
+    @media(max-width: 580px) {
+      .players-grid { grid-template-columns: repeat(2, 1fr); }
+      .pcell:nth-child(3n) { border-right: 1px solid var(--border); }
+      .pcell:nth-child(2n) { border-right: none; }
+      .pcell:nth-last-child(-n+2) { border-bottom: none; }
+    }
+    .pcell {
+      padding: 12px 14px; border-right: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: flex-start; gap: 10px;
+    }
+    .pcell:nth-child(3n) { border-right: none; }
+    .pcell:nth-last-child(-n+3) { border-bottom: none; }
+    .pcell-info { flex: 1; min-width: 0; }
+    .pcell-name {
+      font-size: 12px; font-weight: 600; color: var(--text);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .pcell-detail {
+      font-size: 11px; color: var(--text-2);
+      margin-top: 3px; display: flex; align-items: center; gap: 4px; flex-wrap: wrap;
+    }
+    .pcell-rounds { font-size: 10px; color: var(--text-3); margin-top: 2px; }
+    .cut-penalty { font-size: 10px; color: var(--amber); margin-top: 2px; font-style: italic; }
+    .pcell-empty {
+      padding: 12px 14px; border-right: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+    .pcell-empty:nth-child(3n) { border-right: none; }
+    .pcell-empty:nth-last-child(-n+3) { border-bottom: none; }
+
+    /* ── Pills ── */
+    .pill {
+      font-size: 10px; padding: 2px 6px;
+      border-radius: 10px; font-weight: 700; white-space: nowrap;
+    }
+    .pill-under { background: var(--green-bg); color: var(--green); }
+    .pill-over  { background: var(--red-bg);   color: var(--red); }
+    .pill-even  { background: var(--bg-2); color: var(--text-2); }
+    .pill-cut   { background: var(--amber-bg); color: var(--amber); }
+    .pill-wd    { background: var(--bg-2); color: var(--text-3); }
+
+    /* ── Draft ── */
+    .draft-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 12px; margin-bottom: 1rem;
+    }
+    .draft-card {
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 14px; box-shadow: var(--shadow);
+    }
+    .draft-title {
+      font-size: 13px; font-weight: 700; margin-bottom: 10px;
+      display: flex; align-items: center; gap: 8px; color: var(--text);
+    }
+    .draft-count { font-size: 11px; color: var(--text-3); margin-left: auto; font-weight: 400; }
+    .slot {
+      display: flex; align-items: center; gap: 8px; padding: 7px 10px;
+      border-radius: 8px; background: var(--bg-2); margin-bottom: 5px;
+      font-size: 12px; color: var(--text); min-height: 44px;
+      border: 1px solid var(--border);
+    }
+    .slot.empty {
+      color: var(--text-3); font-style: italic;
+      border-style: dashed; min-height: 38px;
+    }
+    .slot-n { font-size: 10px; color: var(--text-3); width: 14px; flex-shrink: 0; font-weight: 600; }
+    .slot-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+    .rm-btn {
+      margin-left: auto; cursor: pointer; border: none; background: none;
+      color: var(--text-3); font-size: 15px; line-height: 1; padding: 0 2px;
+      transition: color 0.1s; flex-shrink: 0;
+    }
+    .rm-btn:hover { color: var(--red); }
+
+    .assign-bar {
+      display: grid; grid-template-columns: 1fr auto auto; gap: 8px;
+      margin-bottom: 1.25rem; background: var(--bg); padding: 12px;
+      border-radius: var(--radius-lg); border: 1px solid var(--border); box-shadow: var(--shadow);
+    }
+
+    /* ── Scores table ── */
+    .scores-wrap {
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow);
+    }
+    .stbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .stbl th {
+      text-align: left; padding: 9px 14px; font-size: 11px; font-weight: 700;
+      color: var(--text-2); border-bottom: 1px solid var(--border);
+      background: var(--bg-2); text-transform: uppercase; letter-spacing: 0.4px;
+    }
+    .stbl td { padding: 8px 14px; border-bottom: 1px solid var(--border); color: var(--text); }
+    .stbl tr:last-child td { border-bottom: none; }
+    .stbl tr:hover td { background: var(--bg-2); }
+    .pos-num { font-weight: 700; color: var(--text-3); font-size: 12px; }
+    .team-tag { font-size: 10px; padding: 2px 7px; border-radius: 10px; font-weight: 700; }
+    .player-row-name { display: flex; align-items: center; gap: 9px; }
+
+    /* ── Setup ── */
+    .setup-sec { margin-bottom: 1.75rem; }
+    .setup-sec h2 {
+      font-size: 14px; font-weight: 700; margin-bottom: .75rem; color: var(--text);
+      text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .irow { display: flex; gap: 8px; margin-bottom: 8px; }
+    .tli {
+      display: flex; align-items: center; gap: 9px; padding: 9px 13px;
+      background: var(--bg-2); border-radius: var(--radius); font-size: 13px;
+      color: var(--text); margin-bottom: 6px; border: 1px solid var(--border);
+    }
+    .tli .rm {
+      margin-left: auto; cursor: pointer; border: none; background: none;
+      font-size: 17px; color: var(--text-3); transition: color 0.1s;
+    }
+    .tli .rm:hover { color: var(--red); }
+    .tour-selector { display: flex; gap: 6px; margin-bottom: 1rem; flex-wrap: wrap; }
+    .tour-btn {
+      padding: 5px 14px; border-radius: 20px; font-size: 12px; font-weight: 600;
+      border: 1px solid var(--border-2); background: var(--bg); color: var(--text-2); cursor: pointer;
+    }
+    .tour-btn.active { background: var(--green); color: #fff; border-color: var(--green); }
+
+    /* ── Form controls ── */
+    input, select {
+      font-family: var(--font); font-size: 14px; padding: 9px 12px;
+      border-radius: var(--radius); border: 1px solid var(--border-2);
+      background: var(--bg); color: var(--text); width: 100%;
+    }
+    input:focus, select:focus { outline: 2px solid var(--green); outline-offset: 1px; border-color: transparent; }
+    button {
+      font-family: var(--font); font-size: 13px; font-weight: 600;
+      padding: 9px 18px; border-radius: var(--radius); border: 1px solid var(--border-2);
+      background: var(--bg); color: var(--text); cursor: pointer;
+      transition: all 0.15s; white-space: nowrap;
+    }
+    button:hover { background: var(--bg-2); }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
+    button.btn-primary { background: var(--text); color: var(--bg); border-color: var(--text); }
+    button.btn-primary:hover { opacity: 0.85; }
+    button.btn-green { background: var(--green); color: #fff; border-color: var(--green); }
+    button.btn-green:hover { opacity: 0.85; }
+
+    .avg-note {
+      font-size: 12px; color: var(--text-2); padding: 7px 16px;
+      background: var(--amber-bg); border-bottom: 1px solid var(--border);
+    }
+    .footer {
+      text-align: center; font-size: 12px; color: var(--text-3);
+      margin-top: 2.5rem; padding-top: 1rem; border-top: 1px solid var(--border);
+    }
+  </style>
+</head>
+<body>
+
+<nav class="topnav">
+  <div class="nav-brand">
+    <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+      <circle cx="11" cy="11" r="10" fill="var(--green-bg)" stroke="var(--green)" stroke-width="1.5"/>
+      <circle cx="11" cy="11" r="3.5" fill="var(--green)"/>
+    </svg>
+    Golf Draft League
+    <span class="tour-pill" id="nav-tour-pill">LPGA</span>
+  </div>
+  <div class="nav-right">
+    <span class="round-info" id="nav-round"></span>
+    <button class="btn-primary" id="refresh-btn" onclick="refreshScores()">⟳ Refresh scores</button>
+  </div>
+</nav>
+
+<div class="app">
+
+  <div class="tournament-banner">
+    <div class="banner-left">
+      <div class="banner-icon">⛳</div>
+      <div>
+        <div class="banner-title" id="banner-title">Golf Draft League</div>
+        <div class="banner-sub" id="banner-sub">Load scores to see the active tournament</div>
+      </div>
+    </div>
+    <div class="banner-stats" id="banner-stats" style="display:none">
+      <div class="stat-item"><div class="stat-val" id="stat-players">—</div><div class="stat-label">Players</div></div>
+      <div class="stat-item"><div class="stat-val" id="stat-teams">—</div><div class="stat-label">Teams</div></div>
+      <div class="stat-item"><div class="stat-val" id="stat-updated">—</div><div class="stat-label">Updated</div></div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('leaderboard')">🏆 Leaderboard</button>
+    <button class="tab" onclick="showTab('draft')">📋 Draft</button>
+    <button class="tab" onclick="showTab('scores')">📊 All players</button>
+    <button class="tab" onclick="showTab('setup')">⚙️ Setup</button>
+  </div>
+
+  <!-- LEADERBOARD -->
+  <div id="tab-leaderboard" class="section active">
+    <div id="lb-content">
+      <div class="info-box">
+        Welcome to <b>Golf Draft League</b>! Here's how to get started:<br><br>
+        1. Hit <b>⟳ Refresh scores</b> to load the live tournament leaderboard<br>
+        2. Go to <b>⚙️ Setup</b> to add your friends' team names<br>
+        3. Go to <b>📋 Draft</b> to assign 6 players to each team<br>
+        4. Come back here to track live standings — with player photos!
+      </div>
+    </div>
+  </div>
+
+  <!-- DRAFT -->
+  <div id="tab-draft" class="section">
+    <div class="assign-bar">
+      <select id="player-sel"><option value="">— select a player (load scores first) —</option></select>
+      <select id="team-sel" style="width:160px"><option value="">— team —</option></select>
+      <button class="btn-green" onclick="assignPlayer()">Add player</button>
+    </div>
+    <div id="draft-grid" class="draft-grid"></div>
+    <div style="text-align:center;margin-top:.5rem">
+      <button onclick="clearDraft()" style="font-size:12px;color:var(--text-3);border:none;background:none;padding:4px 8px">Clear all picks</button>
+    </div>
+  </div>
+
+  <!-- SCORES -->
+  <div id="tab-scores" class="section">
+    <div id="scores-content">
+      <div class="info-box">Hit <b>⟳ Refresh scores</b> to load the full player leaderboard.</div>
+    </div>
+  </div>
+
+  <!-- SETUP -->
+  <div id="tab-setup" class="section">
+    <div class="card" style="padding:20px">
+      <div class="setup-sec">
+        <h2>Tour</h2>
+        <div class="tour-selector">
+          <button class="tour-btn active" onclick="setTour('lpga',this)">LPGA</button>
+          <button class="tour-btn" onclick="setTour('pga',this)">PGA</button>
+          <button class="tour-btn" onclick="setTour('eur',this)">DP World</button>
+        </div>
+      </div>
+      <div class="setup-sec">
+        <h2>Teams</h2>
+        <div class="irow">
+          <input type="text" id="team-inp" placeholder="Enter a friend's name or team name"
+            onkeydown="if(event.key==='Enter')addTeam()" />
+          <button class="btn-primary" onclick="addTeam()" style="width:auto">Add</button>
+        </div>
+        <div id="team-list"></div>
+      </div>
+      <div class="setup-sec" style="margin-bottom:0">
+        <h2>Scoring rules</h2>
+        <div class="info-box" style="margin-bottom:0">
+          🐍 <b>Snake draft</b> · 6 golfers per team · Sum all round stroke scores · <b>Lowest total wins</b><br><br>
+          ✂️ <b>Missed cut:</b> Player earns R1 + R2 + (field R3 avg + 3 penalty) + (field R4 avg + 3 penalty).
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">Scores via ESPN Public API · No API key required · Refreshed on demand</div>
+</div>
+
+<script>
+  const COLORS = ['#1D9E75','#185FA5','#C0780F','#C43E7A','#6B5FD8','#C44A1A','#4E8A12','#C43535'];
+  const KEY = 'golf_draft_v5';
+  let S = {
+    tour: 'lpga', teams: [], draft: {}, scores: {},
+    updated: null, roundInfo: '', tournamentName: '',
+    fieldAvgR3: null, fieldAvgR4: null,
+  };
+  try { const d = localStorage.getItem(KEY); if (d) S = { ...S, ...JSON.parse(d) }; } catch(e) {}
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e) {} }
+  function esc(s) { return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;'); }
+
+  // ── Avatar helper ──
+  function avatarHTML(photo, name, size='md') {
+    const sz = size === 'sm' ? 28 : 36;
+    const cls = size === 'sm' ? 'player-avatar-sm' : 'player-avatar';
+    const fcls = size === 'sm' ? 'avatar-fallback-sm' : 'avatar-fallback';
+    const initials = name.split(' ').map(w=>w[0]||'').slice(0,2).join('').toUpperCase();
+    if (photo) {
+      return `<img class="${cls}" src="${photo}" alt="${name}"
+        onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"
+        loading="lazy" />
+        <div class="${fcls}" style="display:none">${initials}</div>`;
+    }
+    return `<div class="${fcls}">${initials}</div>`;
+  }
+
+  // ── Field averages ──
+  function computeFieldAverages() {
+    const active = Object.values(S.scores).filter(p => p.status === 'active');
+    const r3s = active.map(p => p.r3).filter(v => v != null);
+    const r4s = active.map(p => p.r4).filter(v => v != null);
+    S.fieldAvgR3 = r3s.length ? Math.round(r3s.reduce((a,b)=>a+b,0)/r3s.length) : null;
+    S.fieldAvgR4 = r4s.length ? Math.round(r4s.reduce((a,b)=>a+b,0)/r4s.length) : null;
+  }
+
+  function effectiveScores(sc) {
+    if (!sc) return { r1:null, r2:null, r3:null, r4:null, isCut:false };
+    const isCut = sc.status === 'cut' || sc.status === 'wd';
+    return {
+      r1: sc.r1, r2: sc.r2,
+      r3: isCut ? (S.fieldAvgR3 != null ? S.fieldAvgR3 + 3 : null) : sc.r3,
+      r4: isCut ? (S.fieldAvgR4 != null ? S.fieldAvgR4 + 3 : null) : sc.r4,
+      isCut,
+    };
+  }
+
+  function playerTotal(sc) {
+    const { r1,r2,r3,r4 } = effectiveScores(sc);
+    return [r1,r2,r3,r4].reduce((a,b) => b != null ? a+b : a, 0);
+  }
+
+  function fmtScore(v) {
+    if (v == null) return '—';
+    if (v === 0) return 'E';
+    return v > 0 ? '+'+v : String(v);
+  }
+
+  function pillCls(v, status) {
+    if (status === 'cut' || status === 'wd') return 'pill-cut';
+    if (v == null) return 'pill-even';
+    return v < 0 ? 'pill-under' : v > 0 ? 'pill-over' : 'pill-even';
+  }
+
+  // ── Tabs ──
+  function showTab(t) {
+    document.querySelectorAll('.tab').forEach((b,i) =>
+      b.classList.toggle('active', ['leaderboard','draft','scores','setup'][i] === t));
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.getElementById('tab-'+t).classList.add('active');
+    if (t === 'leaderboard') renderLB();
+    if (t === 'draft') renderDraft();
+    if (t === 'scores') renderScores();
+  }
+
+  function setTour(tour, btn) {
+    S.tour = tour;
+    document.querySelectorAll('.tour-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('nav-tour-pill').textContent = tour.toUpperCase();
+    save();
+  }
+
+  // ── Teams ──
+  function addTeam() {
+    const v = document.getElementById('team-inp').value.trim();
+    if (!v || S.teams.includes(v)) return;
+    S.teams.push(v); S.draft[v] = S.draft[v] || [];
+    document.getElementById('team-inp').value = '';
+    save(); renderTeamList(); renderDraft(); renderTeamSel(); updateBannerStats();
+  }
+  function removeTeam(t) {
+    S.teams = S.teams.filter(x => x !== t); delete S.draft[t];
+    save(); renderTeamList(); renderDraft(); renderTeamSel(); updateBannerStats();
+  }
+  function renderTeamList() {
+    document.getElementById('team-list').innerHTML = S.teams.length
+      ? S.teams.map((t,i) => `
+          <div class="tli">
+            <span class="color-dot" style="background:${COLORS[i%COLORS.length]}"></span>
+            <span style="font-weight:600">${t}</span>
+            <span style="font-size:11px;color:var(--text-3);margin-left:4px">${(S.draft[t]||[]).length}/6 players</span>
+            <button class="rm" onclick="removeTeam('${esc(t)}')">×</button>
+          </div>`).join('')
+      : '<div class="info-box" style="margin:0">No teams yet — add your first team above!</div>';
+  }
+  function renderTeamSel() {
+    document.getElementById('team-sel').innerHTML =
+      `<option value="">— team —</option>` +
+      S.teams.map(t => `<option value="${esc(t)}">${t}</option>`).join('');
+  }
+
+  // ── Draft ──
+  function assignPlayer() {
+    const p = document.getElementById('player-sel').value;
+    const t = document.getElementById('team-sel').value;
+    if (!p || !t) return;
+    if (!S.draft[t]) S.draft[t] = [];
+    if (S.draft[t].length >= 6) { alert('Team already has 6 players'); return; }
+    if (Object.values(S.draft).flat().includes(p)) { alert('Player already drafted'); return; }
+    S.draft[t].push(p); save(); renderDraft();
+  }
+  function removeFromTeam(team, player) {
+    S.draft[team] = S.draft[team].filter(p => p !== player); save(); renderDraft();
+  }
+  function clearDraft() {
+    if (!confirm('Clear all picks?')) return;
+    S.teams.forEach(t => S.draft[t] = []); save(); renderDraft();
+  }
+  function updatePlayerDrop() {
+    const taken = new Set(Object.values(S.draft).flat());
+    const opts = Object.keys(S.scores).filter(p => !taken.has(p)).sort();
+    document.getElementById('player-sel').innerHTML =
+      `<option value="">— select a player —</option>` +
+      opts.map(p => {
+        const sc = S.scores[p];
+        const label = sc ? ` (${fmtScore(sc.toPScore)})` : '';
+        return `<option value="${p}">${p}${label}</option>`;
+      }).join('');
+  }
+
+  function renderDraft() {
+    const g = document.getElementById('draft-grid');
+    if (!S.teams.length) {
+      g.innerHTML = '<div class="info-box" style="grid-column:1/-1">Add teams in the <b>⚙️ Setup</b> tab first.</div>';
+      return;
+    }
+    g.innerHTML = S.teams.map((t,i) => {
+      const picks = S.draft[t] || [];
+      const slots = Array.from({length:6}, (_,si) => {
+        if (picks[si]) {
+          const sc = S.scores[picks[si]];
+          let badge = '';
+          if (sc) {
+            const isCut = sc.status === 'cut' || sc.status === 'wd';
+            badge = isCut
+              ? `<span class="pill pill-cut">CUT</span>`
+              : `<span class="pill ${pillCls(sc.toPScore,sc.status)}">${fmtScore(sc.toPScore)}</span>`;
+          }
+          const photo = sc?.photo || null;
+          return `<div class="slot">
+            <span class="slot-n">${si+1}</span>
+            ${avatarHTML(photo, picks[si], 'sm')}
+            <span class="slot-name">${picks[si]}</span>
+            ${badge}
+            <button class="rm-btn" onclick="removeFromTeam('${esc(t)}','${esc(picks[si])}')">×</button>
+          </div>`;
+        }
+        return `<div class="slot empty"><span class="slot-n">${si+1}</span>empty slot</div>`;
+      }).join('');
+      return `<div class="draft-card">
+        <div class="draft-title">
+          <span class="color-dot" style="background:${COLORS[i%COLORS.length]}"></span>
+          ${t}
+          <span class="draft-count">${picks.length}/6</span>
+        </div>
+        ${slots}
+      </div>`;
+    }).join('');
+    updatePlayerDrop();
+  }
+
+  // ── Leaderboard ──
+  function renderLB() {
+    const el = document.getElementById('lb-content');
+    if (!S.teams.length) {
+      let html = '<div class="info-box">Add teams in <b>⚙️ Setup</b>, then assign players in <b>📋 Draft</b>.</div>';
+      const n = Object.keys(S.scores).length;
+      if (n) html += `<div class="info-box">✅ ${n} players loaded from ESPN. Add your teams to start tracking.</div>`;
+      el.innerHTML = html; return;
+    }
+
+    const avgNote = S.fieldAvgR3 != null
+      ? `✂️ Cut penalty active — R3: ${S.fieldAvgR3}+3=<b>${S.fieldAvgR3+3}</b>${S.fieldAvgR4!=null?` · R4: ${S.fieldAvgR4}+3=<b>${S.fieldAvgR4+3}</b>`:' · R4 avg pending'}`
+      : `✂️ Cut penalty queued — applies once R3 data is available`;
+
+    const rows = S.teams.map((t,i) => {
+      const picks = S.draft[t] || [];
+      let total = 0;
+      const pdata = picks.map(name => {
+        const sc = S.scores[name];
+        if (!sc) return { name, sc:null, eff:null };
+        total += playerTotal(sc);
+        return { name, sc, eff: effectiveScores(sc) };
+      });
+      return { t, i, total, pdata };
+    }).sort((a,b) => a.total - b.total);
+
+    el.innerHTML = `
+      <div class="card" style="margin-bottom:1rem">
+        <div class="status-bar">
+          <span><span class="live-dot"></span>ESPN ${S.tour.toUpperCase()} · ${S.tournamentName||'Active tournament'}${S.roundInfo?' · '+S.roundInfo:''}</span>
+          <span style="color:var(--text-3)">Updated ${S.updated||'—'}</span>
+        </div>
+        <div class="avg-note">${avgNote}</div>
+      </div>`
+    + rows.map(({t,i,total,pdata}, rank) => {
+      const rc = rank===0?'rank-1':rank===1?'rank-2':rank===2?'rank-3':'rank-n';
+      const tc = total<0?'score-under':total>0?'score-over':'';
+
+      let cells = pdata.map(({name,sc,eff}) => {
+        if (!name) return `<div class="pcell-empty"><div class="pcell-name" style="color:var(--text-3);font-style:italic;font-size:12px;padding:2px 0">empty</div></div>`;
+        let pill='', rounds='—', cutPenalty='';
+        if (sc && eff) {
+          const rds = [eff.r1,eff.r2,eff.r3,eff.r4].filter(r=>r!=null);
+          rounds = rds.join(' · ') || '—';
+          if (eff.isCut) {
+            pill = `<span class="pill pill-cut">CUT</span>`;
+            if (S.fieldAvgR3 != null) {
+              const p3 = S.fieldAvgR3+3, p4 = S.fieldAvgR4!=null?S.fieldAvgR4+3:null;
+              cutPenalty = `<div class="cut-penalty">+3 pen: ${p3}${p4?'/'+p4:'/TBD'}</div>`;
+            }
+          } else {
+            const v = sc.toPScore;
+            if (v != null) pill = `<span class="pill ${pillCls(v,sc.status)}">${fmtScore(v)}</span>`;
+            if (sc.thru) rounds += ` (${sc.thru})`;
+          }
+        }
+        const photo = sc?.photo || null;
+        return `<div class="pcell">
+          ${avatarHTML(photo, name, 'md')}
+          <div class="pcell-info">
+            <div class="pcell-name">${name}</div>
+            <div class="pcell-detail">${pill}</div>
+            <div class="pcell-rounds">${rounds}</div>
+            ${cutPenalty}
+          </div>
+        </div>`;
+      });
+
+      while (cells.length < 6) cells.push(`<div class="pcell-empty"></div>`);
+
+      const drafted = pdata.filter(p=>p.sc).length;
+      return `<div class="card">
+        <div class="team-header">
+          <span class="rank-badge ${rc}">${rank+1}</span>
+          <div>
+            <div class="team-name-row">
+              <span class="color-dot" style="background:${COLORS[i%COLORS.length]}"></span>${t}
+            </div>
+            <div class="team-meta">${drafted}/${pdata.length} players scoring</div>
+          </div>
+          <div class="team-total ${tc}">${fmtScore(total)}</div>
+        </div>
+        <div class="players-grid">${cells.join('')}</div>
+      </div>`;
+    }).join('');
+  }
+
+  // ── All players ──
+  function renderScores() {
+    const el = document.getElementById('scores-content');
+    const entries = Object.entries(S.scores);
+    if (!entries.length) { el.innerHTML = '<div class="info-box">Hit <b>⟳ Refresh scores</b> to load the full player field.</div>'; return; }
+
+    const draftedMap = {};
+    S.teams.forEach((t,i) => (S.draft[t]||[]).forEach(p => draftedMap[p] = {t, color:COLORS[i%COLORS.length]}));
+
+    const sorted = [...entries].sort((a,b) => {
+      const ca = a[1].status==='cut'||a[1].status==='wd';
+      const cb = b[1].status==='cut'||b[1].status==='wd';
+      if (ca !== cb) return ca ? 1 : -1;
+      return (a[1].toPScore??999) - (b[1].toPScore??999);
+    });
+
+    const avgNote = S.fieldAvgR3!=null
+      ? `Cut penalty: R3 avg ${S.fieldAvgR3}+3=${S.fieldAvgR3+3}${S.fieldAvgR4!=null?' · R4 avg '+S.fieldAvgR4+'+3='+(S.fieldAvgR4+3):''}`
+      : '';
+
+    let pos = 0, lastScore = null;
+    const rows = sorted.map(([name,sc], idx) => {
+      const d = draftedMap[name];
+      const tag = d ? `<span class="team-tag" style="background:${d.color}22;color:${d.color}">${d.t}</span>` : '';
+      const eff = effectiveScores(sc);
+      const rds = [eff.r1,eff.r2,eff.r3,eff.r4].map(r=>r!=null?r:'—').join(' | ');
+      const isCut = eff.isCut;
+      const cls = isCut?'pill-cut':pillCls(sc.toPScore,sc.status);
+      const disp = isCut?'CUT':(sc.status==='wd'?'WD':fmtScore(sc.toPScore));
+      const thru = sc.thru&&!isCut?` <span style="font-size:11px;color:var(--text-3)">thru ${sc.thru}</span>`:'';
+      const pen = isCut&&S.fieldAvgR3!=null?` <span style="font-size:10px;color:var(--amber);font-style:italic">(+3 pen)</span>`:'';
+      if (!isCut) { if (sc.toPScore !== lastScore) { pos=idx+1; lastScore=sc.toPScore; } }
+      return `<tr>
+        <td class="pos-num">${isCut?'':pos}</td>
+        <td>
+          <div class="player-row-name">
+            ${avatarHTML(sc.photo||null, name, 'sm')}
+            <span>${name}${thru}${pen}</span>
+          </div>
+        </td>
+        <td><span class="pill ${cls}">${disp}</span></td>
+        <td style="font-size:12px;color:var(--text-2)">${rds}</td>
+        <td>${tag}</td>
+      </tr>`;
+    }).join('');
+
+    el.innerHTML = `<div class="scores-wrap">
+      <div class="status-bar">
+        <span><span class="live-dot"></span>ESPN ${S.tour.toUpperCase()} · ${S.tournamentName||''}${S.roundInfo?' · '+S.roundInfo:''} · Updated ${S.updated||'—'}</span>
+        ${avgNote?`<span style="color:var(--amber)">${avgNote}</span>`:''}
+      </div>
+      <div style="overflow-x:auto">
+        <table class="stbl">
+          <thead><tr><th>#</th><th>Player</th><th>Score</th><th>R1 | R2 | R3 | R4</th><th>Team</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>`;
+  }
+
+  function updateBannerStats() {
+    const n = Object.keys(S.scores).length;
+    if (n) {
+      document.getElementById('banner-stats').style.display = 'flex';
+      document.getElementById('stat-players').textContent = n;
+      document.getElementById('stat-teams').textContent = S.teams.length;
+      document.getElementById('stat-updated').textContent = S.updated || '—';
+    }
+    if (S.tournamentName) {
+      document.getElementById('banner-title').textContent = S.tournamentName;
+      document.getElementById('banner-sub').textContent = S.roundInfo || '';
+    }
+  }
+
+  // ── Refresh ──
+  async function refreshScores() {
+    const btn = document.getElementById('refresh-btn');
+    btn.textContent = 'Loading...'; btn.disabled = true;
+    try {
+      const resp = await fetch(`/api/scores?tour=${S.tour}`);
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || 'API error');
+
+      S.scores = {};
+      (data.players || []).forEach(p => {
+        S.scores[p.name] = {
+          toPScore: p.toPar ?? null,
+          r1: p.r1??null, r2: p.r2??null, r3: p.r3??null, r4: p.r4??null,
+          thru: p.thru||null, status: p.status||'active',
+          photo: p.photo||null,
+        };
+      });
+
+      S.tournamentName = data.tournament || '';
+      S.roundInfo = data.round || '';
+      S.updated = new Date().toLocaleTimeString();
+      document.getElementById('nav-round').textContent = S.roundInfo;
+      document.getElementById('nav-round').style.display = 'block';
+
+      computeFieldAverages(); save();
+      updateBannerStats(); updatePlayerDrop();
+      renderLB(); renderScores(); renderDraft();
+    } catch(e) {
+      console.error(e);
+      alert('Could not load scores: ' + e.message);
+    }
+    btn.textContent = '⟳ Refresh scores'; btn.disabled = false;
+  }
+
+  // ── Init ──
+  renderTeamList(); renderTeamSel(); renderDraft(); renderLB();
+  if (Object.keys(S.scores).length) { computeFieldAverages(); updateBannerStats(); renderScores(); }
+  document.querySelectorAll('.tour-btn').forEach(b => {
+    b.classList.toggle('active', b.textContent.toLowerCase() === S.tour);
+  });
+  document.getElementById('nav-tour-pill').textContent = S.tour.toUpperCase();
+</script>
+</body>
+</html>
