@@ -267,6 +267,20 @@
       margin-bottom: 1.25rem; background: var(--bg); padding: 12px;
       border-radius: var(--radius-lg); border: 1px solid var(--border); box-shadow: var(--shadow);
     }
+    .search-wrap { position: relative; }
+    .player-dropdown {
+      display: none; position: absolute; top: calc(100% + 3px); left: 0; right: 0;
+      background: var(--bg); border: 1px solid var(--border-2); border-radius: var(--radius);
+      max-height: 220px; overflow-y: auto; z-index: 200; box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+    }
+    .player-option {
+      display: flex; align-items: center; gap: 9px; padding: 8px 12px;
+      cursor: pointer; font-size: 13px; border-bottom: 1px solid var(--border);
+    }
+    .player-option:last-child { border-bottom: none; }
+    .player-option:hover, .player-option.focused { background: var(--bg-2); }
+    .player-option-name { flex: 1; font-weight: 500; }
+    .player-option-score { font-size: 11px; color: var(--text-3); }
 
     /* ── Scores table ── */
     .scores-wrap {
@@ -397,7 +411,11 @@
   <!-- DRAFT -->
   <div id="tab-draft" class="section">
     <div class="assign-bar">
-      <select id="player-sel"><option value="">— select a player (load scores first) —</option></select>
+      <div class="search-wrap">
+        <input type="text" id="player-search" placeholder="Search for a player..." autocomplete="off"
+          oninput="filterPlayers()" onfocus="filterPlayers()" onkeydown="searchKeyDown(event)" />
+        <div class="player-dropdown" id="player-dropdown"></div>
+      </div>
       <select id="team-sel" style="width:160px"><option value="">— team —</option></select>
       <button class="btn-green" onclick="assignPlayer()">Add player</button>
     </div>
@@ -561,13 +579,15 @@
 
   // ── Draft ──
   function assignPlayer() {
-    const p = document.getElementById('player-sel').value;
+    const p = _selectedPlayer;
     const t = document.getElementById('team-sel').value;
     if (!p || !t) return;
     if (!S.draft[t]) S.draft[t] = [];
     if (S.draft[t].length >= 6) { alert('Team already has 6 players'); return; }
     if (Object.values(S.draft).flat().includes(p)) { alert('Player already drafted'); return; }
     S.draft[t].push(p); save(); renderDraft();
+    _selectedPlayer = '';
+    document.getElementById('player-search').value = '';
   }
   function removeFromTeam(team, player) {
     S.draft[team] = S.draft[team].filter(p => p !== player); save(); renderDraft();
@@ -576,17 +596,67 @@
     if (!confirm('Clear all picks?')) return;
     S.teams.forEach(t => S.draft[t] = []); save(); renderDraft();
   }
+  let _selectedPlayer = '';
+  let _focusedIdx = -1;
+
   function updatePlayerDrop() {
-    const taken = new Set(Object.values(S.draft).flat());
-    const opts = Object.keys(S.scores).filter(p => !taken.has(p)).sort();
-    document.getElementById('player-sel').innerHTML =
-      `<option value="">— select a player —</option>` +
-      opts.map(p => {
-        const sc = S.scores[p];
-        const label = sc ? ` (${fmtScore(sc.toPScore)})` : '';
-        return `<option value="${p}">${p}${label}</option>`;
-      }).join('');
+    _selectedPlayer = '';
+    const el = document.getElementById('player-search');
+    if (el) el.value = '';
+    document.getElementById('player-dropdown').style.display = 'none';
   }
+
+  function filterPlayers() {
+    const q = document.getElementById('player-search').value.toLowerCase();
+    const taken = new Set(Object.values(S.draft).flat());
+    const all = Object.keys(S.scores).filter(p => !taken.has(p)).sort();
+    const filtered = q ? all.filter(p => p.toLowerCase().includes(q)) : all;
+    _focusedIdx = -1;
+
+    const dd = document.getElementById('player-dropdown');
+    if (!filtered.length) { dd.style.display = 'none'; return; }
+
+    dd.innerHTML = filtered.slice(0, 30).map((p, i) => {
+      const sc = S.scores[p];
+      const score = sc ? `<span class="player-option-score">${fmtScore(sc.toPScore)}</span>` : '';
+      return `<div class="player-option" data-name="${esc(p)}" data-idx="${i}" onmousedown="selectPlayer('${esc(p)}')">${avatarHTML(sc?.photo||null, p, 'sm')}<span class="player-option-name">${p}</span>${score}</div>`;
+    }).join('');
+    dd.style.display = 'block';
+  }
+
+  function selectPlayer(name) {
+    _selectedPlayer = name;
+    document.getElementById('player-search').value = name;
+    document.getElementById('player-dropdown').style.display = 'none';
+  }
+
+  function searchKeyDown(e) {
+    const dd = document.getElementById('player-dropdown');
+    const opts = dd.querySelectorAll('.player-option');
+    if (!opts.length) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      _focusedIdx = Math.min(_focusedIdx + 1, opts.length - 1);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      _focusedIdx = Math.max(_focusedIdx - 1, 0);
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      const target = _focusedIdx >= 0 ? opts[_focusedIdx] : opts[0];
+      if (target) selectPlayer(target.dataset.name);
+      return;
+    } else if (e.key === 'Escape') {
+      dd.style.display = 'none'; return;
+    }
+    opts.forEach((o, i) => o.classList.toggle('focused', i === _focusedIdx));
+    if (opts[_focusedIdx]) opts[_focusedIdx].scrollIntoView({ block: 'nearest' });
+  }
+
+  document.addEventListener('click', e => {
+    if (!e.target.closest('.search-wrap')) {
+      document.getElementById('player-dropdown').style.display = 'none';
+    }
+  });
 
   function renderDraft() {
     const g = document.getElementById('draft-grid');
