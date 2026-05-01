@@ -184,6 +184,8 @@
     .team-total { font-size: 26px; font-weight: 700; color: var(--text); letter-spacing: -1px; }
     .score-under { color: var(--green); }
     .score-over  { color: var(--red); }
+    .team-score-col { text-align: right; }
+    .win-prob { font-size: 11px; font-weight: 700; color: var(--text-3); margin-top: 2px; letter-spacing: 0.3px; }
 
     /* ── Player grid in leaderboard ── */
     .players-grid { display: grid; grid-template-columns: repeat(3, 1fr); }
@@ -510,6 +512,17 @@
     return sc.toPScore ?? 0;
   }
 
+  function calcWinProbs(totals) {
+    if (totals.length < 2) return totals.map(() => 100);
+    const min = Math.min(...totals);
+    const weights = totals.map(t => Math.exp(-(t - min) * 0.3));
+    const sum = weights.reduce((a, b) => a + b, 0);
+    const probs = weights.map(w => Math.round((w / sum) * 100));
+    const diff = 100 - probs.reduce((a, b) => a + b, 0);
+    probs[probs.indexOf(Math.max(...probs))] += diff;
+    return probs;
+  }
+
   function fmtScore(v) {
     if (v == null) return '—';
     if (v === 0) return 'E';
@@ -677,6 +690,9 @@
       return { t, i, total, pdata };
     }).sort((a,b) => a.total - b.total);
 
+    const hasScores = Object.keys(S.scores).length > 0;
+    const winProbs = hasScores ? calcWinProbs(rows.map(r => r.total)) : null;
+
     el.innerHTML = `
       <div class="card" style="margin-bottom:1rem">
         <div class="status-bar">
@@ -731,7 +747,10 @@
             </div>
             <div class="team-meta">${drafted}/${pdata.length} players scoring</div>
           </div>
-          <div class="team-total ${tc}">${fmtScore(total)}</div>
+          <div class="team-score-col">
+            <div class="team-total ${tc}">${fmtScore(total)}</div>
+            ${winProbs ? `<div class="win-prob">${winProbs[rank]}% to win</div>` : ''}
+          </div>
         </div>
         <div class="players-grid">${cells.join('')}</div>
       </div>`;
