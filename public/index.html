@@ -500,8 +500,14 @@
   }
 
   function playerTotal(sc) {
-    const { r1,r2,r3,r4 } = effectiveScores(sc);
-    return [r1,r2,r3,r4].reduce((a,b) => b != null ? a+b : a, 0);
+    if (!sc) return 0;
+    const isCut = sc.status === 'cut' || sc.status === 'wd';
+    if (isCut) {
+      const r3pen = S.fieldAvgR3 != null ? 3 : 0;
+      const r4pen = S.fieldAvgR4 != null ? 3 : 0;
+      return (sc.toPScore ?? 0) + r3pen + r4pen;
+    }
+    return sc.toPScore ?? 0;
   }
 
   function fmtScore(v) {
