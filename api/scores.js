@@ -43,10 +43,7 @@ export default async function handler(req, res) {
       let photo = null;
       if (athlete.headshot?.href) {
         photo = athlete.headshot.href;
-      } else if (athlete.flag?.href) {
-        photo = athlete.flag.href;
       } else if (athlete.id) {
-        // Fallback: construct ESPN headshot URL from athlete ID
         photo = `https://a.espncdn.com/i/headshots/golf/players/full/${athlete.id}.png`;
       }
 
