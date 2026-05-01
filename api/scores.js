@@ -43,8 +43,8 @@ export default async function handler(req, res) {
       let photo = null;
       if (athlete.headshot?.href) {
         photo = athlete.headshot.href;
-      } else if (athlete.id) {
-        photo = `https://a.espncdn.com/i/headshots/golf/players/full/${athlete.id}.png`;
+      } else if (c.id) {
+        photo = `https://a.espncdn.com/i/headshots/golf/players/full/${c.id}.png`;
       }
 
       // ── Round scores ──
