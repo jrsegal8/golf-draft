@@ -186,6 +186,7 @@
     .score-over  { color: var(--red); }
     .team-score-col { text-align: right; }
     .win-prob { font-size: 11px; font-weight: 700; color: var(--text-3); margin-top: 2px; letter-spacing: 0.3px; }
+    .country-flag { width: 16px; height: 11px; object-fit: cover; border-radius: 2px; flex-shrink: 0; vertical-align: middle; }
 
     /* ── Player grid in leaderboard ── */
     .players-grid { display: grid; grid-template-columns: repeat(3, 1fr); }
@@ -481,6 +482,11 @@
     return `<div class="${fcls}">${initials}</div>`;
   }
 
+  function flagHTML(flag) {
+    if (!flag) return '';
+    return `<img class="country-flag" src="${flag}" alt="" loading="lazy" />`;
+  }
+
   // ── Field averages ──
   function computeFieldAverages() {
     const active = Object.values(S.scores).filter(p => p.status === 'active');
@@ -645,7 +651,7 @@
           return `<div class="slot">
             <span class="slot-n">${si+1}</span>
             ${avatarHTML(photo, picks[si], 'sm')}
-            <span class="slot-name">${picks[si]}</span>
+            <span class="slot-name">${flagHTML(sc?.flag||null)} ${picks[si]}</span>
             ${badge}
             <button class="rm-btn" onclick="removeFromTeam('${esc(t)}','${esc(picks[si])}')">×</button>
           </div>`;
@@ -727,7 +733,7 @@
         return `<div class="pcell">
           ${avatarHTML(photo, name, 'md')}
           <div class="pcell-info">
-            <div class="pcell-name">${name}</div>
+            <div class="pcell-name">${flagHTML(sc?.flag||null)} ${name}</div>
             <div class="pcell-detail">${pill}</div>
             <div class="pcell-rounds">${rounds}</div>
             ${cutPenalty}
@@ -794,7 +800,7 @@
         <td>
           <div class="player-row-name">
             ${avatarHTML(sc.photo||null, name, 'sm')}
-            <span>${name}${thru}${pen}</span>
+            <span>${flagHTML(sc.flag||null)} ${name}${thru}${pen}</span>
           </div>
         </td>
         <td><span class="pill ${cls}">${disp}</span></td>
@@ -846,7 +852,7 @@
           toPScore: p.toPar ?? null,
           r1: p.r1??null, r2: p.r2??null, r3: p.r3??null, r4: p.r4??null,
           thru: p.thru||null, status: p.status||'active',
-          photo: p.photo||null,
+          photo: p.photo||null, flag: p.flag||null,
         };
       });
 

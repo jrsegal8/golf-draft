@@ -80,7 +80,10 @@ export default async function handler(req, res) {
       // ── Thru ──
       const thru = c.statistics?.find(s => s.name === 'holesCompleted')?.displayValue || null;
 
-      return { name, photo, toPar, r1, r2, r3, r4, thru, status: playerStatus };
+      // ── Flag ──
+      const flag = athlete.flag?.href || null;
+
+      return { name, photo, flag, toPar, r1, r2, r3, r4, thru, status: playerStatus };
     });
 
     // Sort: active by toPar, then cut/wd at bottom
