@@ -339,6 +339,29 @@
       font-size: 12px; color: var(--text-2); padding: 7px 16px;
       background: var(--amber-bg); border-bottom: 1px solid var(--border);
     }
+    /* ── History ── */
+    .tally-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; margin-bottom: 1.25rem; }
+    .tally-card {
+      background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-lg);
+      padding: 14px 16px; box-shadow: var(--shadow); text-align: center;
+    }
+    .tally-name { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .tally-wins { font-size: 30px; font-weight: 700; color: var(--text); letter-spacing: -1px; }
+    .tally-label { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+    .hist-card { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-lg); margin-bottom: 1rem; box-shadow: var(--shadow); overflow: hidden; }
+    .hist-header { padding: 12px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 12px; background: var(--bg-2); }
+    .hist-title { font-size: 14px; font-weight: 700; color: var(--text); }
+    .hist-meta { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+    .hist-winner { font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 10px; background: #fac030; color: #5a3500; white-space: nowrap; }
+    .hist-row { display: flex; align-items: center; gap: 10px; padding: 9px 16px; border-bottom: 1px solid var(--border); font-size: 13px; }
+    .hist-row:last-child { border-bottom: none; }
+    .hist-rank { width: 20px; font-size: 12px; font-weight: 700; color: var(--text-3); flex-shrink: 0; }
+    .hist-team { flex: 1; font-weight: 600; color: var(--text); display: flex; align-items: center; gap: 7px; }
+    .hist-score { font-size: 15px; font-weight: 700; }
+    .hist-players { font-size: 11px; color: var(--text-3); margin-top: 1px; }
+    .hist-del { border: none; background: none; color: var(--text-3); cursor: pointer; font-size: 15px; padding: 0 2px; flex-shrink: 0; }
+    .hist-del:hover { color: var(--red); }
+
     .footer {
       text-align: center; font-size: 12px; color: var(--text-3);
       margin-top: 2.5rem; padding-top: 1rem; border-top: 1px solid var(--border);
@@ -383,6 +406,7 @@
     <button class="tab active" onclick="showTab('leaderboard')">🏆 Leaderboard</button>
     <button class="tab" onclick="showTab('draft')">📋 Draft</button>
     <button class="tab" onclick="showTab('scores')">📊 All players</button>
+    <button class="tab" onclick="showTab('history')">📜 History</button>
     <button class="tab" onclick="showTab('setup')">⚙️ Setup</button>
   </div>
 
@@ -420,6 +444,11 @@
     <div id="scores-content">
       <div class="info-box">Hit <b>⟳ Refresh scores</b> to load the full player leaderboard.</div>
     </div>
+  </div>
+
+  <!-- HISTORY -->
+  <div id="tab-history" class="section">
+    <div id="history-content"></div>
   </div>
 
   <!-- SETUP -->
@@ -461,7 +490,7 @@
   let S = {
     tour: 'pga', teams: [], draft: {}, scores: {},
     updated: null, roundInfo: '', tournamentName: '',
-    fieldAvgR3: null, fieldAvgR4: null,
+    fieldAvgR3: null, fieldAvgR4: null, history: [],
   };
   try { const d = localStorage.getItem(KEY); if (d) S = { ...S, ...JSON.parse(d) }; } catch(e) {}
   function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e) {} }
@@ -544,12 +573,13 @@
   // ── Tabs ──
   function showTab(t) {
     document.querySelectorAll('.tab').forEach((b,i) =>
-      b.classList.toggle('active', ['leaderboard','draft','scores','setup'][i] === t));
+      b.classList.toggle('active', ['leaderboard','draft','scores','history','setup'][i] === t));
     document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
     document.getElementById('tab-'+t).classList.add('active');
     if (t === 'leaderboard') renderLB();
     if (t === 'draft') renderDraft();
     if (t === 'scores') renderScores();
+    if (t === 'history') renderHistory();
   }
 
   function setTour(tour, btn) {
@@ -703,7 +733,10 @@
       <div class="card" style="margin-bottom:1rem">
         <div class="status-bar">
           <span><span class="live-dot"></span>ESPN ${S.tour.toUpperCase()} · ${S.tournamentName||'Active tournament'}${S.roundInfo?' · '+S.roundInfo:''}</span>
-          <span style="color:var(--text-3)">Updated ${S.updated||'—'}</span>
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="color:var(--text-3)">Updated ${S.updated||'—'}</span>
+            ${hasScores ? `<button onclick="saveTournament()" style="font-size:11px;padding:4px 10px;border-radius:6px">Save to History</button>` : ''}
+          </div>
         </div>
         <div class="avg-note">${avgNote}</div>
       </div>`
@@ -823,6 +856,105 @@
     </div>`;
   }
 
+  // ── History ──
+  function saveTournament() {
+    if (!S.teams.length || !Object.keys(S.scores).length) {
+      alert('Load scores and set up teams first.'); return;
+    }
+    const name = S.tournamentName || 'Tournament';
+    if (!confirm(`Save "${name}" to history?`)) return;
+
+    const standings = S.teams.map((t, i) => {
+      const picks = S.draft[t] || [];
+      let total = 0;
+      const players = picks.map(pname => {
+        const sc = S.scores[pname];
+        if (sc) total += playerTotal(sc);
+        return { name: pname, toPar: sc?.toPScore ?? null, status: sc?.status || 'unknown' };
+      });
+      return { team: t, total, color: COLORS[i % COLORS.length], players };
+    }).sort((a, b) => a.total - b.total);
+
+    S.history.unshift({
+      id: Date.now(),
+      tournament: name,
+      date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      round: S.roundInfo || '',
+      winner: standings[0]?.team || '',
+      standings,
+    });
+    save();
+    renderHistory();
+    showTab('history');
+  }
+
+  function deleteTournament(id) {
+    if (!confirm('Remove this tournament from history?')) return;
+    S.history = S.history.filter(h => h.id !== id);
+    save(); renderHistory();
+  }
+
+  function renderHistory() {
+    const el = document.getElementById('history-content');
+    if (!S.history.length) {
+      el.innerHTML = '<div class="info-box">No history yet — finish a tournament and hit <b>Save to History</b> on the Leaderboard tab.</div>';
+      return;
+    }
+
+    // Win tally
+    const tally = {};
+    S.teams.forEach(t => tally[t] = 0);
+    S.history.forEach(h => { if (h.winner) tally[h.winner] = (tally[h.winner] || 0) + 1; });
+    const tallyEntries = Object.entries(tally).sort((a, b) => b[1] - a[1]);
+
+    const tallyHTML = tallyEntries.length ? `
+      <div class="card" style="padding:16px;margin-bottom:1.25rem">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-2);margin-bottom:12px">Win Tally</div>
+        <div class="tally-grid">
+          ${tallyEntries.map(([team, wins], i) => {
+            const color = COLORS[S.teams.indexOf(team) % COLORS.length] || COLORS[i % COLORS.length];
+            return `<div class="tally-card">
+              <div class="color-dot" style="background:${color};margin:0 auto 6px"></div>
+              <div class="tally-name">${team}</div>
+              <div class="tally-wins" style="color:${wins > 0 ? color : 'var(--text-3)'}">${wins}</div>
+              <div class="tally-label">${wins === 1 ? 'win' : 'wins'}</div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>` : '';
+
+    const histHTML = S.history.map(h => `
+      <div class="hist-card">
+        <div class="hist-header">
+          <div>
+            <div class="hist-title">${h.tournament}</div>
+            <div class="hist-meta">${h.date}${h.round ? ' · ' + h.round : ''}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            ${h.winner ? `<span class="hist-winner">🏆 ${h.winner}</span>` : ''}
+            <button class="hist-del" onclick="deleteTournament(${h.id})" title="Remove">×</button>
+          </div>
+        </div>
+        ${h.standings.map((s, rank) => {
+          const tc = s.total < 0 ? 'score-under' : s.total > 0 ? 'score-over' : '';
+          const playerList = s.players.map(p => p.name.split(' ').slice(-1)[0]).join(', ');
+          return `<div class="hist-row">
+            <span class="hist-rank">${rank + 1}</span>
+            <div class="hist-team">
+              <span class="color-dot" style="background:${s.color}"></span>
+              <div>
+                <div>${s.team}</div>
+                <div class="hist-players">${playerList || '—'}</div>
+              </div>
+            </div>
+            <span class="hist-score ${tc}">${fmtScore(s.total)}</span>
+          </div>`;
+        }).join('')}
+      </div>`).join('');
+
+    el.innerHTML = tallyHTML + histHTML;
+  }
+
   function updateBannerStats() {
     const n = Object.keys(S.scores).length;
     if (n) {
@@ -873,7 +1005,7 @@
   }
 
   // ── Init ──
-  renderTeamList(); renderTeamSel(); renderDraft(); renderLB();
+  renderTeamList(); renderTeamSel(); renderDraft(); renderLB(); renderHistory();
   if (Object.keys(S.scores).length) { computeFieldAverages(); updateBannerStats(); renderScores(); }
   document.querySelectorAll('.tour-btn').forEach(b => {
     b.classList.toggle('active', b.textContent.toLowerCase() === S.tour);
