@@ -233,46 +233,48 @@
     .pill-cut   { background: var(--amber-bg); color: var(--amber); }
     .pill-wd    { background: var(--bg-2); color: var(--text-3); }
 
-    /* ── Draft ── */
-    .draft-grid {
-      display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-      gap: 12px; margin-bottom: 1rem;
-    }
-    .draft-card {
-      background: var(--bg); border: 1px solid var(--border);
-      border-radius: var(--radius-lg); padding: 14px; box-shadow: var(--shadow);
-    }
-    .draft-title {
-      font-size: 13px; font-weight: 700; margin-bottom: 10px;
-      display: flex; align-items: center; gap: 8px; color: var(--text);
-    }
-    .draft-count { font-size: 11px; color: var(--text-3); margin-left: auto; font-weight: 400; }
-    .slot {
-      display: flex; align-items: center; gap: 8px; padding: 7px 10px;
-      border-radius: 8px; background: var(--bg-2); margin-bottom: 5px;
-      font-size: 12px; color: var(--text); min-height: 44px;
-      border: 1px solid var(--border);
-    }
-    .slot.empty {
-      color: var(--text-3); font-style: italic;
-      border-style: dashed; min-height: 38px;
-    }
-    .slot-n { font-size: 10px; color: var(--text-3); width: 14px; flex-shrink: 0; font-weight: 600; }
-    .slot-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
-    .rm-btn {
-      margin-left: auto; cursor: pointer; border: none; background: none;
-      color: var(--text-3); font-size: 15px; line-height: 1; padding: 0 2px;
-      transition: color 0.1s; flex-shrink: 0;
-    }
-    .rm-btn:hover { color: var(--red); }
-
+    /* ── Draft board ── */
     .assign-bar {
       display: grid; grid-template-columns: 1fr auto auto; gap: 8px;
-      margin-bottom: 1.25rem; background: var(--bg); padding: 12px;
+      margin-bottom: 1rem; background: var(--bg); padding: 12px;
       border-radius: var(--radius-lg); border: 1px solid var(--border); box-shadow: var(--shadow);
     }
     .player-select-wrap { display: flex; flex-direction: column; gap: 5px; }
     #player-sel { height: 36px; }
+    .rm-btn {
+      cursor: pointer; border: none; background: none;
+      color: var(--text-3); font-size: 15px; line-height: 1; padding: 0 2px;
+      transition: color 0.1s; flex-shrink: 0;
+    }
+    .rm-btn:hover { color: var(--red); }
+    .board-outer { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: var(--radius-lg); box-shadow: var(--shadow); border: 1px solid var(--border); background: var(--bg); }
+    .board-table { border-collapse: collapse; min-width: 100%; }
+    .board-table th, .board-table td { border: 1px solid var(--border); }
+    .board-corner { background: var(--bg-2); width: 56px; padding: 10px 8px; }
+    .board-team-th {
+      min-width: 150px; padding: 0; background: var(--bg-2);
+      cursor: grab; user-select: none; vertical-align: top;
+    }
+    .board-team-th:active { cursor: grabbing; opacity: 0.7; }
+    .board-team-th.drag-over { background: var(--green-bg); outline: 2px solid var(--green); outline-offset: -2px; }
+    .board-team-inner { padding: 10px 12px; display: flex; flex-direction: column; gap: 3px; }
+    .board-team-name-row { display: flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 700; color: var(--text); }
+    .board-drag-hint { font-size: 10px; color: var(--text-3); display: flex; align-items: center; gap: 3px; }
+    .board-picks-count { font-size: 10px; color: var(--text-3); margin-left: auto; }
+    .board-round-td { background: var(--bg-2); text-align: center; padding: 6px 4px; white-space: nowrap; }
+    .board-round-num { font-size: 11px; font-weight: 700; color: var(--text-2); }
+    .board-snake-arrow { font-size: 13px; color: var(--green); display: block; margin-top: 1px; }
+    .board-pick-td { padding: 0; vertical-align: middle; min-width: 150px; }
+    .board-pick-inner {
+      display: flex; align-items: center; gap: 8px; padding: 8px 10px;
+      min-height: 56px; cursor: pointer; transition: background 0.12s;
+    }
+    .board-pick-inner:hover { background: var(--bg-2); }
+    .board-pick-inner.empty { color: var(--text-3); font-size: 12px; font-style: italic; justify-content: center; }
+    .board-pick-inner.empty:hover { background: var(--green-bg); color: var(--green); font-style: normal; }
+    .board-pick-info { flex: 1; min-width: 0; }
+    .board-pick-name { font-size: 12px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 4px; }
+    .board-pick-score { font-size: 11px; color: var(--text-2); margin-top: 2px; display: flex; align-items: center; gap: 4px; }
 
     /* ── Scores table ── */
     .scores-wrap {
@@ -435,8 +437,8 @@
       <select id="team-sel" style="width:160px"><option value="">— team —</option></select>
       <button class="btn-green" onclick="assignPlayer()">Add player</button>
     </div>
-    <div id="draft-grid" class="draft-grid"></div>
-    <div style="text-align:center;margin-top:.5rem">
+    <div id="draft-grid"></div>
+    <div style="text-align:center;margin-top:.75rem">
       <button onclick="clearDraft()" style="font-size:12px;color:var(--text-3);border:none;background:none;padding:4px 8px">Clear all picks</button>
     </div>
   </div>
@@ -661,45 +663,105 @@
     _buildPlayerOpts(q ? all.filter(p => p.toLowerCase().includes(q)) : all);
   }
 
+  let _dragFromIdx = null;
+
   function renderDraft() {
     const g = document.getElementById('draft-grid');
     if (!S.teams.length) {
-      g.innerHTML = '<div class="info-box" style="grid-column:1/-1">Add teams in the <b>⚙️ Setup</b> tab first.</div>';
+      g.innerHTML = '<div class="info-box">Add teams in the <b>⚙️ Setup</b> tab first.</div>';
       return;
     }
-    g.innerHTML = S.teams.map((t,i) => {
-      const picks = S.draft[t] || [];
-      const slots = Array.from({length:6}, (_,si) => {
-        if (picks[si]) {
-          const sc = S.scores[picks[si]];
-          let badge = '';
-          if (sc) {
-            const isCut = sc.status === 'cut' || sc.status === 'wd';
-            badge = isCut
-              ? `<span class="pill pill-cut">CUT</span>`
-              : `<span class="pill ${pillCls(sc.toPScore,sc.status)}">${fmtScore(sc.toPScore)}</span>`;
-          }
-          const photo = sc?.photo || null;
-          return `<div class="slot">
-            <span class="slot-n">${si+1}</span>
-            ${avatarHTML(photo, picks[si], 'sm')}
-            <span class="slot-name">${flagHTML(sc?.flag||null)} ${picks[si]}</span>
-            ${badge}
-            <button class="rm-btn" onclick="removeFromTeam('${esc(t)}','${esc(picks[si])}')">×</button>
-          </div>`;
-        }
-        return `<div class="slot empty"><span class="slot-n">${si+1}</span>empty slot</div>`;
-      }).join('');
-      return `<div class="draft-card">
-        <div class="draft-title">
-          <span class="color-dot" style="background:${COLORS[i%COLORS.length]}"></span>
-          ${t}
-          <span class="draft-count">${picks.length}/6</span>
+
+    const headers = S.teams.map((t, i) => {
+      const picks = (S.draft[t] || []).filter(Boolean).length;
+      return `<th class="board-team-th" draggable="true"
+          ondragstart="boardDragStart(event,${i})" ondragend="boardDragEnd(event)"
+          ondragover="boardDragOver(event)" ondragleave="boardDragLeave(event)"
+          ondrop="boardDrop(event,${i})">
+        <div class="board-team-inner">
+          <div class="board-team-name-row">
+            <span class="color-dot" style="background:${COLORS[i%COLORS.length]}"></span>
+            ${t}
+            <span class="board-picks-count">${picks}/6</span>
+          </div>
+          <div class="board-drag-hint">⠿ drag to reorder</div>
         </div>
-        ${slots}
-      </div>`;
+      </th>`;
     }).join('');
+
+    const rows = Array.from({length: 6}, (_, round) => {
+      const isReverse = round % 2 === 1;
+      const arrow = isReverse ? '←' : '→';
+      const cells = S.teams.map((t, i) => {
+        const player = (S.draft[t] || [])[round] || null;
+        const sc = player ? S.scores[player] : null;
+        if (player) {
+          const isCut = sc?.status === 'cut' || sc?.status === 'wd';
+          const pill = sc ? (isCut
+            ? `<span class="pill pill-cut">CUT</span>`
+            : `<span class="pill ${pillCls(sc?.toPScore, sc?.status)}">${fmtScore(sc?.toPScore)}</span>`) : '';
+          return `<td class="board-pick-td">
+            <div class="board-pick-inner" onclick="quickAssign('${esc(t)}')">
+              ${avatarHTML(sc?.photo||null, player, 'sm')}
+              <div class="board-pick-info">
+                <div class="board-pick-name">${flagHTML(sc?.flag||null)}${player}</div>
+                <div class="board-pick-score">${pill}</div>
+              </div>
+              <button class="rm-btn" onclick="event.stopPropagation();removeFromTeam('${esc(t)}','${esc(player)}')">×</button>
+            </div>
+          </td>`;
+        }
+        return `<td class="board-pick-td">
+          <div class="board-pick-inner empty" onclick="quickAssign('${esc(t)}')">+ pick</div>
+        </td>`;
+      }).join('');
+      return `<tr>
+        <td class="board-round-td">
+          <div class="board-round-num">R${round+1}</div>
+          <span class="board-snake-arrow">${arrow}</span>
+        </td>
+        ${cells}
+      </tr>`;
+    }).join('');
+
+    g.innerHTML = `<div class="board-outer">
+      <table class="board-table">
+        <thead><tr><th class="board-corner"></th>${headers}</tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
     updatePlayerDrop();
+  }
+
+  function quickAssign(team) {
+    document.getElementById('team-sel').value = team;
+    document.getElementById('player-search').focus();
+  }
+
+  function boardDragStart(e, idx) {
+    _dragFromIdx = idx;
+    e.dataTransfer.effectAllowed = 'move';
+  }
+  function boardDragEnd(e) {
+    _dragFromIdx = null;
+    document.querySelectorAll('.board-team-th').forEach(el => el.classList.remove('drag-over'));
+  }
+  function boardDragOver(e) {
+    e.preventDefault();
+    e.currentTarget.classList.add('drag-over');
+  }
+  function boardDragLeave(e) {
+    e.currentTarget.classList.remove('drag-over');
+  }
+  function boardDrop(e, toIdx) {
+    e.preventDefault();
+    if (_dragFromIdx === null || _dragFromIdx === toIdx) { boardDragEnd(e); return; }
+    const teams = [...S.teams];
+    const [moved] = teams.splice(_dragFromIdx, 1);
+    teams.splice(toIdx, 0, moved);
+    S.teams = teams;
+    save(); renderDraft();
+    _dragFromIdx = null;
   }
 
   // ── Leaderboard ──
