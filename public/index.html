@@ -343,6 +343,11 @@
       font-size: 12px; color: var(--text-2); padding: 7px 16px;
       background: var(--amber-bg); border-bottom: 1px solid var(--border);
     }
+    /* ── Prob chart ── */
+    #prob-chart-wrap { padding: 16px 18px; margin-bottom: 1.25rem; }
+    .prob-legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text-2); }
+    .prob-legend-dot { width: 10px; height: 3px; border-radius: 2px; flex-shrink: 0; }
+
     /* ── History ── */
     .tally-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; margin-bottom: 1.25rem; }
     .tally-card {
@@ -417,6 +422,14 @@
 
   <!-- LEADERBOARD -->
   <div id="tab-leaderboard" class="section active">
+    <div id="prob-chart-wrap" style="display:none" class="card" style="margin-bottom:1.25rem;padding:16px 18px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <span style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-2)">Win Probability Over Time</span>
+        <button onclick="clearProbHistory()" style="font-size:11px;color:var(--text-3);border:none;background:none;padding:2px 6px;cursor:pointer">Reset</button>
+      </div>
+      <div id="prob-chart"></div>
+      <div id="prob-legend" style="display:flex;flex-wrap:wrap;gap:10px;margin-top:10px"></div>
+    </div>
     <div id="lb-content">
       <div class="info-box">
         Welcome to <b>Philly Scumbags + Duey Golf Majors Draft</b>! Here's how to get started:<br><br>
@@ -495,7 +508,7 @@
   let S = {
     tour: 'pga', teams: [], draft: {}, scores: {},
     updated: null, roundInfo: '', tournamentName: '', courseName: '',
-    fieldAvgR3: null, fieldAvgR4: null, history: [],
+    fieldAvgR3: null, fieldAvgR4: null, history: [], probHistory: [],
   };
   try { const d = localStorage.getItem(KEY); if (d) S = { ...S, ...JSON.parse(d) }; } catch(e) {}
   function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e) {} }
@@ -577,6 +590,91 @@
     const diff = 100 - probs.reduce((a, b) => a + b, 0);
     probs[probs.indexOf(Math.max(...probs))] += diff;
     return probs;
+  }
+
+  // ── Win probability chart ──
+  function snapshotProbs() {
+    if (!S.teams.length || !Object.keys(S.scores).length) return;
+    const totals = S.teams.map(t => {
+      const picks = S.draft[t] || [];
+      return picks.reduce((sum, name) => sum + (S.scores[name] ? playerTotal(S.scores[name]) : 0), 0);
+    });
+    const probs = calcWinProbs(totals);
+    const entry = { time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}), probs: {} };
+    S.teams.forEach((t, i) => entry.probs[t] = probs[i]);
+    S.probHistory.push(entry);
+    if (S.probHistory.length > 40) S.probHistory.shift();
+    save();
+  }
+
+  function clearProbHistory() {
+    if (!confirm('Clear probability chart history?')) return;
+    S.probHistory = []; save(); renderProbChart();
+  }
+
+  function renderProbChart() {
+    const wrap = document.getElementById('prob-chart-wrap');
+    const chartEl = document.getElementById('prob-chart');
+    const legendEl = document.getElementById('prob-legend');
+    if (!wrap) return;
+
+    const history = S.probHistory.filter(h => S.teams.some(t => h.probs[t] != null));
+    if (history.length < 2 || !S.teams.length) { wrap.style.display = 'none'; return; }
+    wrap.style.display = 'block';
+
+    const W = 560, H = 160;
+    const pL = 36, pR = 12, pT = 12, pB = 28;
+    const cW = W - pL - pR, cH = H - pT - pB;
+    const n = history.length;
+    const xOf = i => pL + (n === 1 ? cW / 2 : i * (cW / (n - 1)));
+    const yOf = p => pT + cH - (p / 100) * cH;
+
+    // Gridlines & y-labels
+    const grid = [0, 25, 50, 75, 100].map(v => `
+      <line x1="${pL}" y1="${yOf(v)}" x2="${W - pR}" y2="${yOf(v)}" stroke="var(--border-color,#e5e5e3)" stroke-width="1"/>
+      <text x="${pL - 4}" y="${yOf(v) + 4}" text-anchor="end" font-size="9" fill="#9a9a96">${v}%</text>`).join('');
+
+    // Smooth bezier path per team
+    function smoothPath(pts) {
+      if (pts.length === 1) return `M${pts[0].x},${pts[0].y}`;
+      let d = `M${pts[0].x},${pts[0].y}`;
+      for (let i = 1; i < pts.length; i++) {
+        const cpx = (pts[i-1].x + pts[i].x) / 2;
+        d += ` C${cpx},${pts[i-1].y} ${cpx},${pts[i].y} ${pts[i].x},${pts[i].y}`;
+      }
+      return d;
+    }
+
+    const lines = S.teams.map((t, ti) => {
+      const color = COLORS[ti % COLORS.length];
+      const pts = history.map((h, i) => ({ x: xOf(i), y: yOf(h.probs[t] ?? 0) }));
+      const dots = pts.map((p, i) => {
+        const prob = history[i].probs[t] ?? 0;
+        return `<circle cx="${p.x}" cy="${p.y}" r="3.5" fill="${color}" stroke="var(--bg,#fff)" stroke-width="1.5"><title>${t}: ${prob}% at ${history[i].time}</title></circle>`;
+      }).join('');
+      // Label at last point
+      const last = pts[pts.length - 1];
+      const lastProb = history[history.length - 1].probs[t] ?? 0;
+      const labelY = last.y + (last.y > pT + 14 ? -7 : 14);
+      return `<path d="${smoothPath(pts)}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        ${dots}
+        <text x="${last.x + 5}" y="${labelY}" font-size="9" font-weight="700" fill="${color}">${lastProb}%</text>`;
+    }).join('');
+
+    // X-axis time labels — show every other if crowded
+    const step = n > 12 ? Math.ceil(n / 8) : 1;
+    const xLabels = history.map((h, i) => i % step === 0 || i === n - 1
+      ? `<text x="${xOf(i)}" y="${H - pB + 13}" text-anchor="middle" font-size="8" fill="#9a9a96">${h.time}</text>` : '').join('');
+
+    chartEl.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="100%" xmlns="http://www.w3.org/2000/svg" style="display:block;overflow:visible">
+      ${grid}${lines}${xLabels}
+    </svg>`;
+
+    legendEl.innerHTML = S.teams.map((t, ti) => `
+      <div class="prob-legend-item">
+        <div class="prob-legend-dot" style="background:${COLORS[ti%COLORS.length]}"></div>
+        <span>${t}</span>
+      </div>`).join('');
   }
 
   function fmtScore(v) {
@@ -783,6 +881,7 @@
 
   // ── Leaderboard ──
   function renderLB() {
+    renderProbChart();
     const el = document.getElementById('lb-content');
     if (!S.teams.length) {
       let html = '<div class="info-box">Add teams in <b>⚙️ Setup</b>, then assign players in <b>📋 Draft</b>.</div>';
@@ -1078,7 +1177,9 @@
       document.getElementById('nav-round').textContent = S.roundInfo;
       document.getElementById('nav-round').style.display = 'block';
 
-      computeFieldAverages(); save();
+      computeFieldAverages();
+      snapshotProbs();
+      save();
       updateBannerStats(); updatePlayerDrop();
       renderLB(); renderScores(); renderDraft();
     } catch(e) {
@@ -1089,7 +1190,7 @@
   }
 
   // ── Init ──
-  renderTeamList(); renderTeamSel(); renderDraft(); renderLB(); renderHistory();
+  renderTeamList(); renderTeamSel(); renderDraft(); renderLB(); renderHistory(); renderProbChart();
   if (Object.keys(S.scores).length) { computeFieldAverages(); updateBannerStats(); renderScores(); }
   document.querySelectorAll('.tour-btn').forEach(b => {
     b.classList.toggle('active', b.textContent.toLowerCase() === S.tour);
