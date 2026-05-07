@@ -274,6 +274,7 @@
     .board-pick-inner.empty:hover { background: var(--green-bg); color: var(--green); font-style: normal; }
     .board-pick-info { flex: 1; min-width: 0; }
     .board-pick-name { font-size: 12px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 4px; }
+    .draft-pos { font-size: 10px; font-weight: 700; color: var(--text-3); background: var(--bg-3); border-radius: 4px; padding: 1px 4px; flex-shrink: 0; }
     .board-pick-score { font-size: 11px; color: var(--text-2); margin-top: 2px; display: flex; align-items: center; gap: 4px; }
 
     /* ── Scores table ── */
@@ -540,6 +541,22 @@
     };
   }
 
+  function draftPos(teamName, roundIdx) {
+    const teamIdx = S.teams.indexOf(teamName);
+    if (teamIdx === -1) return '';
+    const N = S.teams.length;
+    const pickNum = roundIdx % 2 === 0 ? teamIdx + 1 : N - teamIdx;
+    return `${roundIdx + 1}.${pickNum}`;
+  }
+
+  function playerDraftPos(playerName) {
+    for (const t of S.teams) {
+      const idx = (S.draft[t] || []).indexOf(playerName);
+      if (idx !== -1) return draftPos(t, idx);
+    }
+    return '';
+  }
+
   function playerTotal(sc) {
     if (!sc) return 0;
     const isCut = sc.status === 'cut' || sc.status === 'wd';
@@ -704,7 +721,7 @@
             <div class="board-pick-inner" onclick="quickAssign('${esc(t)}')">
               ${avatarHTML(sc?.photo||null, player, 'sm')}
               <div class="board-pick-info">
-                <div class="board-pick-name">${flagHTML(sc?.flag||null)}${player}</div>
+                <div class="board-pick-name"><span class="draft-pos">${draftPos(t, round)}</span>${flagHTML(sc?.flag||null)}${player}</div>
                 <div class="board-pick-score">${pill}</div>
               </div>
               <button class="rm-btn" onclick="event.stopPropagation();removeFromTeam('${esc(t)}','${esc(player)}')">×</button>
@@ -831,7 +848,7 @@
           ${avatarHTML(photo, name, 'md')}
           <div class="pcell-info">
             <div class="pcell-name">${flagHTML(sc?.flag||null)} ${name}</div>
-            <div class="pcell-detail">${pill}</div>
+            <div class="pcell-detail">${pill}${playerDraftPos(name) ? `<span class="draft-pos">${playerDraftPos(name)}</span>` : ''}</div>
             <div class="pcell-rounds">${rounds}</div>
             ${cutPenalty}
           </div>
