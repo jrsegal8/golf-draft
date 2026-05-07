@@ -34,6 +34,23 @@ export default async function handler(req, res) {
     const roundDetail = competition?.status?.type?.shortDetail || event.status?.type?.description || '';
     const competitors = competition?.competitors || [];
 
+    // ── Course name (parallel fetch) ──
+    let courseName = '';
+    try {
+      const coreUrl = `https://sports.core.api.espn.com/v2/sports/golf/leagues/${tour}/events/${event.id}?lang=en&region=us`;
+      const coreResp = await fetch(coreUrl, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+      if (coreResp.ok) {
+        const coreData = await coreResp.json();
+        const course = coreData.courses?.[0];
+        if (course?.name) {
+          const city = course.address?.city || '';
+          const state = course.address?.state || '';
+          courseName = city && state ? `${course.name} · ${city}, ${state}` : course.name;
+        }
+      }
+    } catch (_) {}
+
+
     const players = competitors.map((c) => {
       const athlete = c.athlete || {};
       const name = athlete.displayName || athlete.fullName || 'Unknown';
@@ -96,6 +113,7 @@ export default async function handler(req, res) {
     return res.status(200).json({
       tournament: event.name || event.shortName || '',
       round: roundDetail,
+      course: courseName,
       players,
     });
 

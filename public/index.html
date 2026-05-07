@@ -87,6 +87,7 @@
     }
     .banner-title { font-size: 16px; font-weight: 700; color: var(--text); }
     .banner-sub { font-size: 12px; color: var(--text-2); margin-top: 2px; }
+    .banner-course { font-size: 11px; color: var(--text-3); margin-top: 2px; }
     .banner-stats { display: flex; gap: 20px; flex-wrap: wrap; }
     .stat-item { text-align: right; }
     .stat-val { font-size: 18px; font-weight: 700; color: var(--text); }
@@ -393,6 +394,7 @@
       <div>
         <div class="banner-title" id="banner-title">Philly Scumbags + Duey Golf Majors Draft</div>
         <div class="banner-sub" id="banner-sub">Load scores to see the active tournament</div>
+        <div class="banner-course" id="banner-course" style="display:none"></div>
       </div>
     </div>
     <div class="banner-stats" id="banner-stats" style="display:none">
@@ -489,7 +491,7 @@
   const KEY = 'golf_draft_v6';
   let S = {
     tour: 'pga', teams: [], draft: {}, scores: {},
-    updated: null, roundInfo: '', tournamentName: '',
+    updated: null, roundInfo: '', tournamentName: '', courseName: '',
     fieldAvgR3: null, fieldAvgR4: null, history: [],
   };
   try { const d = localStorage.getItem(KEY); if (d) S = { ...S, ...JSON.parse(d) }; } catch(e) {}
@@ -966,6 +968,8 @@
     if (S.tournamentName) {
       document.getElementById('banner-title').textContent = S.tournamentName;
       document.getElementById('banner-sub').textContent = S.roundInfo || '';
+      const courseEl = document.getElementById('banner-course');
+      if (S.courseName) { courseEl.textContent = S.courseName; courseEl.style.display = 'block'; }
     }
   }
 
@@ -990,6 +994,7 @@
 
       S.tournamentName = data.tournament || '';
       S.roundInfo = data.round || '';
+      S.courseName = data.course || '';
       S.updated = new Date().toLocaleTimeString();
       document.getElementById('nav-round').textContent = S.roundInfo;
       document.getElementById('nav-round').style.display = 'block';
