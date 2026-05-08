@@ -547,6 +547,7 @@
 <script>
   const COLORS = ['#1D9E75','#185FA5','#C0780F','#C43E7A','#6B5FD8','#C44A1A','#4E8A12','#C43535'];
   const KEY = 'golf_draft_v6';
+  const FIREBASE_URL = 'https://golf-draft-1e4b2-default-rtdb.firebaseio.com/state.json';
   let S = {
     tour: 'pga', teams: [], draft: {}, scores: {},
     updated: null, roundInfo: '', tournamentName: '', courseName: '',
@@ -560,8 +561,8 @@
     clearTimeout(_saveTimer);
     _saveTimer = setTimeout(async () => {
       try {
-        await fetch('/api/state', {
-          method: 'POST',
+        await fetch(FIREBASE_URL, {
+          method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(S),
         });
@@ -1384,17 +1385,17 @@
   async function init() {
     renderAll(); // render immediately from local cache
     try {
-      const r = await fetch('/api/state');
+      const r = await fetch(FIREBASE_URL);
       const data = await r.json();
-      if (data && typeof data === 'object' && !data.error) {
+      if (data && typeof data === 'object') {
         // Shared database has data — use it
         S = { ...S, ...data };
         try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e) {}
         renderAll();
       } else if (S.teams.length > 0) {
         // Database is empty but we have local data — push it up so everyone sees it
-        await fetch('/api/state', {
-          method: 'POST',
+        await fetch(FIREBASE_URL, {
+          method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(S),
         });
