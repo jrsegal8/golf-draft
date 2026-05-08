@@ -366,10 +366,17 @@
     .prob-leader-name { font-size: 12px; font-weight: 600; color: var(--text-2); margin-bottom: 1px; }
     .prob-leader-pct { font-size: 32px; font-weight: 800; color: var(--text); letter-spacing: -1.5px; line-height: 1; }
     .prob-leader-pct sup { font-size: 15px; font-weight: 700; vertical-align: super; }
-    .prob-team-legend { display: flex; flex-wrap: wrap; gap: 12px; margin: 6px 0; }
+    .prob-team-legend { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 10px 0 4px; }
     .prob-legend-item { display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 600; color: var(--text); }
-    .prob-legend-swatch { width: 32px; height: 18px; border-radius: 4px; flex-shrink: 0; }
-    .prob-legend-pct { font-size: 11px; color: var(--text-3); margin-left: 2px; font-weight: 400; }
+    .prob-legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .prob-chart-wrap-inner { position: relative; }
+    .prob-tooltip {
+      position: absolute; top: 10px; left: 0;
+      background: var(--bg); border: 1px solid var(--border-2);
+      border-radius: var(--radius); padding: 8px 12px;
+      font-size: 12px; pointer-events: none; z-index: 10;
+      box-shadow: var(--shadow); min-width: 130px; display: none;
+    }
 
     /* ── History ── */
     .tally-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; margin-bottom: 1.25rem; }
@@ -464,7 +471,10 @@
           </div>
         </div>
         <div id="prob-top-legend" class="prob-team-legend"></div>
-        <div id="prob-chart" style="margin:4px 0"></div>
+        <div class="prob-chart-wrap-inner">
+          <div id="prob-chart" style="margin:4px 0"></div>
+          <div id="prob-tooltip" class="prob-tooltip"></div>
+        </div>
         <div id="prob-bottom-legend" class="prob-team-legend"></div>
         <div style="text-align:right;margin-top:6px">
           <button onclick="clearProbHistory()" style="font-size:11px;color:var(--text-3);border:none;background:none;padding:2px 6px;cursor:pointer">Reset chart</button>
@@ -658,7 +668,15 @@
     document.getElementById('prob-leader-name').textContent = leader;
     document.getElementById('prob-leader-pct').innerHTML = `${leaderProb}<sup>%</sup>`;
     document.getElementById('prob-top-legend').innerHTML = '';
-    document.getElementById('prob-bottom-legend').innerHTML = '';
+
+    // Color key legend
+    document.getElementById('prob-bottom-legend').innerHTML = S.teams.map((t, idx) => {
+      const color = COLORS[idx % COLORS.length];
+      return `<div class="prob-legend-item">
+        <div class="prob-legend-dot" style="background:${color}"></div>
+        <span>${t}</span>
+      </div>`;
+    }).join('');
 
     // SVG dimensions
     const W = 600, H = 230;
@@ -700,48 +718,117 @@
     });
 
     // Nudge labels so they don't overlap (min 28px gap)
-    const sorted = [...teamData].sort((a,b) => a.labelY - b.labelY);
-    for (let i = 1; i < sorted.length; i++) {
-      if (sorted[i].labelY - sorted[i-1].labelY < 28) {
-        const mid = (sorted[i].labelY + sorted[i-1].labelY) / 2;
-        sorted[i-1].labelY = mid - 14;
-        sorted[i].labelY = mid + 14;
+    const labelsSorted = [...teamData].sort((a,b) => a.labelY - b.labelY);
+    for (let i = 1; i < labelsSorted.length; i++) {
+      if (labelsSorted[i].labelY - labelsSorted[i-1].labelY < 28) {
+        const mid = (labelsSorted[i].labelY + labelsSorted[i-1].labelY) / 2;
+        labelsSorted[i-1].labelY = mid - 14;
+        labelsSorted[i].labelY = mid + 14;
       }
     }
-    // Clamp to chart bounds
-    sorted.forEach(d => { d.labelY = Math.max(pT + 12, Math.min(pT + cH, d.labelY)); });
+    labelsSorted.forEach(d => { d.labelY = Math.max(pT + 12, Math.min(pT + cH, d.labelY)); });
 
     // Draw lines + endpoint labels
     const lines = teamData.map(d => {
       const lineD = smoothFwd(d.pts);
       const lx = (d.lastPt.x + 10).toFixed(1);
-      const dotR = 4.5;
       return `
         <g clip-path="url(#pcClip)">
           <path d="${lineD}" fill="none" stroke="${d.color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
         </g>
-        <circle cx="${d.lastPt.x.toFixed(1)}" cy="${d.lastPt.y.toFixed(1)}" r="${dotR}" fill="${d.color}"/>
+        <circle cx="${d.lastPt.x.toFixed(1)}" cy="${d.lastPt.y.toFixed(1)}" r="4.5" fill="${d.color}"/>
         <text x="${lx}" y="${(d.labelY - 6).toFixed(1)}" font-size="11" font-weight="700" fill="${d.color}">${d.t.slice(0, 12)}</text>
         <text x="${lx}" y="${(d.labelY + 10).toFixed(1)}" font-size="15" font-weight="800" fill="${d.color}">${d.prob}%</text>
       `;
     }).join('');
-
-    // Invisible tooltip dots
-    const tooltips = teamData.map(d => d.pts.map((pt, i) => {
-      const prob = history[i].probs[d.t] ?? 0;
-      return `<circle cx="${pt.x.toFixed(1)}" cy="${pt.y.toFixed(1)}" r="7" fill="transparent"><title>${d.t}: ${prob}% · ${history[i].time}</title></circle>`;
-    }).join('')).join('');
 
     // X-axis time labels
     const step = n > 10 ? Math.ceil(n / 6) : 1;
     const xLabels = history.map((h, i) => (i % step === 0 || i === n - 1)
       ? `<text x="${xOf(i).toFixed(1)}" y="${(H - pB + 16).toFixed(1)}" text-anchor="middle" font-size="9" fill="var(--text-3)">${h.time}</text>` : '').join('');
 
+    // Transparent hover capture rect
+    const hoverRect = `<rect id="pcHoverRect" x="${pL}" y="${pT}" width="${cW}" height="${cH}" fill="transparent" style="cursor:crosshair"/>`;
+
     document.getElementById('prob-chart').innerHTML =
       `<svg viewBox="0 0 ${W} ${H}" width="100%" xmlns="http://www.w3.org/2000/svg" style="display:block;overflow:visible">
         <defs>${clip}</defs>
-        ${grid}${lines}${tooltips}${xLabels}
+        ${grid}${lines}${xLabels}
+        <line id="pcCrosshair" x1="0" y1="${pT}" x2="0" y2="${pT + cH}" stroke="var(--text-3)" stroke-width="1" stroke-dasharray="3,3" style="display:none"/>
+        ${hoverRect}
       </svg>`;
+
+    // Wire up hover interaction
+    const ns = 'http://www.w3.org/2000/svg';
+    const svg = document.querySelector('#prob-chart svg');
+    const crosshair = svg.getElementById('pcCrosshair');
+    const tooltipEl = document.getElementById('prob-tooltip');
+
+    // Pre-create hover dots in the SVG (one per team)
+    const hoverDots = S.teams.map((t, idx) => {
+      const dot = document.createElementNS(ns, 'circle');
+      dot.setAttribute('r', '5');
+      dot.setAttribute('fill', COLORS[idx % COLORS.length]);
+      dot.setAttribute('stroke', 'var(--bg)');
+      dot.setAttribute('stroke-width', '2');
+      dot.style.display = 'none';
+      svg.appendChild(dot);
+      return { dot, t };
+    });
+
+    const hoverRect2 = svg.getElementById('pcHoverRect');
+
+    hoverRect2.addEventListener('mousemove', e => {
+      const rect = svg.getBoundingClientRect();
+      const mx = (e.clientX - rect.left) * (W / rect.width);
+
+      // Snap to closest data index
+      let ci = 0, minD = Infinity;
+      for (let i = 0; i < n; i++) {
+        const d = Math.abs(xOf(i) - mx);
+        if (d < minD) { minD = d; ci = i; }
+      }
+      const h = history[ci];
+      const cx = xOf(ci);
+
+      crosshair.setAttribute('x1', cx); crosshair.setAttribute('x2', cx);
+      crosshair.style.display = '';
+
+      hoverDots.forEach(({ dot, t }) => {
+        const prob = h.probs[t] ?? 0;
+        dot.setAttribute('cx', cx);
+        dot.setAttribute('cy', yOf(prob));
+        dot.style.display = '';
+      });
+
+      // Tooltip content — sorted by prob desc
+      const teamsSorted = [...S.teams].sort((a,b) => (h.probs[b]??0) - (h.probs[a]??0));
+      tooltipEl.innerHTML = `
+        <div style="font-size:10px;color:var(--text-3);margin-bottom:6px;font-weight:600">${h.time}</div>
+        ${teamsSorted.map(t => {
+          const idx = S.teams.indexOf(t);
+          const color = COLORS[idx % COLORS.length];
+          const prob = h.probs[t] ?? 0;
+          return `<div style="display:flex;align-items:center;gap:7px;margin-bottom:4px">
+            <div style="width:9px;height:9px;border-radius:50%;background:${color};flex-shrink:0"></div>
+            <span style="flex:1;font-weight:600;font-size:12px;color:var(--text)">${t}</span>
+            <span style="font-weight:800;font-size:13px;color:var(--text)">${prob}%</span>
+          </div>`;
+        }).join('')}
+      `;
+
+      // Position tooltip — flip to left side if near right edge
+      const svgFrac = (cx - pL) / cW;
+      tooltipEl.style.left = svgFrac > 0.6 ? '' : `${((cx / W) * 100 + 2).toFixed(1)}%`;
+      tooltipEl.style.right = svgFrac > 0.6 ? `${((1 - (cx / W)) * 100 + 2).toFixed(1)}%` : '';
+      tooltipEl.style.display = 'block';
+    });
+
+    hoverRect2.addEventListener('mouseleave', () => {
+      crosshair.style.display = 'none';
+      hoverDots.forEach(({ dot }) => { dot.style.display = 'none'; });
+      tooltipEl.style.display = 'none';
+    });
   }
 
   function fmtScore(v) {
