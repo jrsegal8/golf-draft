@@ -247,10 +247,10 @@
       transition: color 0.1s; flex-shrink: 0;
     }
     .rm-btn:hover { color: var(--red); }
-    .board-outer { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: var(--radius-lg); box-shadow: var(--shadow); border: 1px solid var(--border); background: var(--bg); }
-    .board-table { border-collapse: collapse; min-width: 100%; }
+    .board-outer { border-radius: var(--radius-lg); box-shadow: var(--shadow); border: 1px solid var(--border); background: var(--bg); }
+    .board-table { border-collapse: collapse; width: 100%; table-layout: fixed; }
     .board-table th, .board-table td { border: 1px solid var(--border); }
-    .board-corner { background: var(--bg-2); width: 56px; padding: 10px 8px; }
+    .board-corner { background: var(--bg-2); width: 40px; padding: 10px 4px; }
     .board-team-th {
       min-width: 150px; padding: 0; background: var(--bg-2);
       cursor: grab; user-select: none; vertical-align: top;
@@ -264,10 +264,10 @@
     .board-round-td { background: var(--bg-2); text-align: center; padding: 6px 4px; white-space: nowrap; }
     .board-round-num { font-size: 11px; font-weight: 700; color: var(--text-2); }
     .board-snake-arrow { font-size: 13px; color: var(--green); display: block; margin-top: 1px; }
-    .board-pick-td { padding: 0; vertical-align: middle; min-width: 150px; }
+    .board-pick-td { padding: 0; vertical-align: middle; }
     .board-pick-inner {
-      display: flex; align-items: center; gap: 8px; padding: 8px 10px;
-      min-height: 56px; cursor: pointer; transition: background 0.12s;
+      display: flex; align-items: center; gap: 6px; padding: 7px 8px;
+      min-height: 50px; cursor: pointer; transition: background 0.12s;
     }
     .board-pick-inner:hover { background: var(--bg-2); }
     .board-pick-inner.empty { color: var(--text-3); font-size: 12px; font-style: italic; justify-content: center; }
