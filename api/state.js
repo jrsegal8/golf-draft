@@ -1,5 +1,8 @@
-const KV_URL   = process.env.UPSTASH_REDIS_REST_URL;
-const KV_TOKEN  = process.env.UPSTASH_REDIS_REST_TOKEN;
+// REDIS_URL format: rediss://default:TOKEN@HOST:PORT
+const _redisUrl = process.env.REDIS_URL || '';
+const _match    = _redisUrl.match(/rediss?:\/\/[^:]*:([^@]+)@([^:/]+)/);
+const KV_URL    = _match ? `https://${_match[2]}` : null;
+const KV_TOKEN  = _match ? _match[1] : null;
 const STATE_KEY = 'golf_draft_state';
 
 async function kvGet() {
