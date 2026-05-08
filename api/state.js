@@ -1,8 +1,12 @@
 // REDIS_URL format: rediss://default:TOKEN@HOST:PORT
-const _redisUrl = process.env.REDIS_URL || '';
-const _match    = _redisUrl.match(/rediss?:\/\/[^:]*:([^@]+)@([^:/]+)/);
-const KV_URL    = _match ? `https://${_match[2]}` : null;
-const KV_TOKEN  = _match ? decodeURIComponent(_match[1]) : null;
+let KV_URL = null, KV_TOKEN = null;
+try {
+  const u = new URL(process.env.REDIS_URL || '');
+  KV_URL   = `https://${u.hostname}`;
+  KV_TOKEN = decodeURIComponent(u.password);
+} catch(e) {
+  console.error('Failed to parse REDIS_URL:', e.message);
+}
 const STATE_KEY = 'golf_draft_state';
 
 console.log('REDIS_URL present:', !!process.env.REDIS_URL);
