@@ -637,60 +637,50 @@
     if (history.length < 2 || !S.teams.length) { wrap.style.display = 'none'; return; }
     wrap.style.display = 'block';
 
-    // Header — leader + probability
     const latest = history[history.length - 1];
-    const sorted = [...S.teams].sort((a,b) => (latest.probs[b]??0) - (latest.probs[a]??0));
-    const leader = sorted[0];
+
+    // Sort teams by average probability (stable order) — leading team at top of stack
+    const avgProb = t => history.reduce((s,h) => s + (h.probs[t]??0), 0) / history.length;
+    const teamOrder = [...S.teams].sort((a,b) => avgProb(a) - avgProb(b)); // ascending = top of chart = leading
+
+    const leader = [...teamOrder].sort((a,b) => (latest.probs[b]??0)-(latest.probs[a]??0))[0];
     const leaderProb = latest.probs[leader] ?? 0;
+
     document.getElementById('prob-leader-name').textContent = leader;
     document.getElementById('prob-leader-pct').innerHTML = `${leaderProb}<sup>%</sup>`;
+    document.getElementById('prob-top-legend').innerHTML = '';
 
-    // Split legend: top half = teams with prob > 50%, bottom = rest (or just split evenly)
-    const half = Math.ceil(sorted.length / 2);
-    const topTeams = sorted.slice(0, half);
-    const botTeams = sorted.slice(half);
-    const legendItem = (t, ti) => {
+    // Legend below chart — sorted by current prob descending
+    const legSorted = [...teamOrder].reverse();
+    document.getElementById('prob-bottom-legend').innerHTML = legSorted.map(t => {
       const idx = S.teams.indexOf(t);
       const color = COLORS[idx % COLORS.length];
       const prob = latest.probs[t] ?? 0;
       return `<div class="prob-legend-item">
-        <div class="prob-legend-swatch" style="background:linear-gradient(135deg,${color}cc,${color}44)"></div>
+        <div class="prob-legend-swatch" style="background:${color}"></div>
         <span>${t}</span><span class="prob-legend-pct">${prob}%</span>
       </div>`;
-    };
-    document.getElementById('prob-top-legend').innerHTML = topTeams.map(legendItem).join('');
-    document.getElementById('prob-bottom-legend').innerHTML = botTeams.map(legendItem).join('');
+    }).join('');
 
-    // SVG dimensions
-    const W = 560, H = 190;
-    const pL = 8, pR = 36, pT = 10, pB = 28;
+    // SVG dimensions — extra right margin for team labels
+    const W = 580, H = 210;
+    const pL = 10, pR = 110, pT = 12, pB = 30;
     const cW = W - pL - pR, cH = H - pT - pB;
     const n = history.length;
-    const xOf = i => pL + (n < 2 ? cW/2 : i * (cW / (n-1)));
+    const xOf = i => pL + (n < 2 ? cW/2 : i * cW / (n-1));
     const yOf = p => pT + cH - (p/100) * cH;
 
-    // Gradient defs
-    const defs = S.teams.map((t, ti) => {
-      const color = COLORS[ti % COLORS.length];
-      return `<linearGradient id="pcg${ti}" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="${color}" stop-opacity="0.45"/>
-        <stop offset="100%" stop-color="${color}" stop-opacity="0.03"/>
-      </linearGradient>`;
-    }).join('');
+    // Cumulative stack per time point (bottom → top = trailing → leading)
+    const cumData = history.map(h => {
+      let cum = 0;
+      return teamOrder.map(t => {
+        const p = h.probs[t] ?? 0;
+        const bottom = cum; cum += p;
+        return { bottom, top: cum };
+      });
+    });
 
-    // Dotted gridlines
-    const gridVals = [0, 25, 50, 75, 100];
-    const grid = gridVals.map(v => {
-      const y = yOf(v);
-      const isMid = v === 50;
-      return `<line x1="${pL}" y1="${y}" x2="${W-pR}" y2="${y}"
-        stroke="${isMid ? '#aaa' : '#ccc'}" stroke-width="${isMid ? 1 : 0.75}"
-        stroke-dasharray="${isMid ? '4,3' : '2,3'}"/>
-        <text x="${W-pR+5}" y="${y+4}" font-size="9" fill="#aaa">${v}</text>`;
-    }).join('');
-
-    function smoothD(pts) {
-      if (!pts.length) return '';
+    function smoothFwd(pts) {
       let d = `M${pts[0].x},${pts[0].y}`;
       for (let i = 1; i < pts.length; i++) {
         const cx = (pts[i-1].x + pts[i].x) / 2;
@@ -698,38 +688,72 @@
       }
       return d;
     }
+    function smoothRev(pts) {
+      // reverse direction smooth curve (for closing the area path)
+      let d = '';
+      for (let i = pts.length - 2; i >= 0; i--) {
+        const cx = (pts[i+1].x + pts[i].x) / 2;
+        d += ` C${cx},${pts[i+1].y} ${cx},${pts[i].y} ${pts[i].x},${pts[i].y}`;
+      }
+      return d;
+    }
 
-    // Draw fills first (behind lines), then lines on top
-    const fills = S.teams.map((t, ti) => {
-      const pts = history.map((h,i) => ({x: xOf(i), y: yOf(h.probs[t]??0)}));
-      const bottom = yOf(0);
-      const area = smoothD(pts) + ` L${pts[pts.length-1].x},${bottom} L${pts[0].x},${bottom} Z`;
-      return `<path d="${area}" fill="url(#pcg${ti})"/>`;
+    // Clip path so bands don't bleed outside chart area
+    const clipId = 'probClip';
+    const clip = `<clipPath id="${clipId}"><rect x="${pL}" y="${pT}" width="${cW}" height="${cH}"/></clipPath>`;
+
+    // Stacked bands
+    const bands = teamOrder.map((t, ti) => {
+      const idx = S.teams.indexOf(t);
+      const color = COLORS[idx % COLORS.length];
+      const topPts = cumData.map((d,i) => ({ x: xOf(i), y: yOf(d[ti].top) }));
+      const botPts = cumData.map((d,i) => ({ x: xOf(i), y: yOf(d[ti].bottom) }));
+
+      // Closed area: forward along top, reverse along bottom
+      const areaD = smoothFwd(topPts) + smoothRev(botPts) + ' Z';
+      // Top edge as separator line
+      const lineD = smoothFwd(topPts);
+
+      // Right-edge label (midpoint of band at last time point)
+      const lastD = cumData[n-1][ti];
+      const bandMidY = yOf((lastD.top + lastD.bottom) / 2);
+      const prob = latest.probs[t] ?? 0;
+      const bandHeight = yOf(lastD.bottom) - yOf(lastD.top);
+      const label = bandHeight > 14
+        ? `<text x="${pL+cW+8}" y="${bandMidY+4}" font-size="11" font-weight="700" fill="${color}">${prob >= 10 ? t.slice(0,9) : ''}${prob}%</text>`
+        : `<text x="${pL+cW+8}" y="${bandMidY+4}" font-size="10" fill="${color}">${prob}%</text>`;
+
+      return `<g clip-path="url(#${clipId})">
+        <path d="${areaD}" fill="${color}" opacity="0.82"/>
+        <path d="${lineD}" fill="none" stroke="#fff" stroke-width="1.5" stroke-opacity="0.6"/>
+      </g>
+      ${label}`;
     }).join('');
 
-    const lines = S.teams.map((t, ti) => {
-      const color = COLORS[ti % COLORS.length];
-      const pts = history.map((h,i) => ({x: xOf(i), y: yOf(h.probs[t]??0)}));
-      const dots = pts.map((p,i) => {
-        const prob = history[i].probs[t]??0;
-        return `<circle cx="${p.x}" cy="${p.y}" r="3" fill="${color}" stroke="#fff" stroke-width="1.5"><title>${t}: ${prob}% · ${history[i].time}</title></circle>`;
-      }).join('');
-      const last = pts[pts.length-1];
-      const lastProb = latest.probs[t] ?? 0;
-      return `<path d="${smoothD(pts)}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-        ${dots}
-        <text x="${last.x+5}" y="${last.y+4}" font-size="9" font-weight="700" fill="${color}">${lastProb}%</text>`;
+    // Dotted horizontal gridlines at 25/50/75%
+    const grid = [25, 50, 75].map(v => {
+      const y = yOf(v);
+      return `<line x1="${pL}" y1="${y}" x2="${pL+cW}" y2="${y}"
+        stroke="#fff" stroke-width="${v===50?1.5:0.8}" stroke-opacity="${v===50?0.7:0.4}" stroke-dasharray="3,4"/>`;
     }).join('');
 
-    // X labels
-    const step = n > 12 ? Math.ceil(n/7) : 1;
+    // X-axis time labels
+    const step = n > 10 ? Math.ceil(n/6) : 1;
     const xLabels = history.map((h,i) => (i%step===0||i===n-1)
-      ? `<text x="${xOf(i)}" y="${H-pB+14}" text-anchor="middle" font-size="9" fill="#aaa">${h.time}</text>` : '').join('');
+      ? `<text x="${xOf(i)}" y="${H-pB+16}" text-anchor="middle" font-size="9" fill="var(--text-3)">${h.time}</text>` : '').join('');
+
+    // Hover dots (invisible, just for title tooltips)
+    const tooltips = teamOrder.map((t,ti) => history.map((h,i) => {
+      const prob = h.probs[t]??0;
+      const lastD = cumData[i][ti];
+      const midY = yOf((lastD.top+lastD.bottom)/2);
+      return `<circle cx="${xOf(i)}" cy="${midY}" r="6" fill="transparent"><title>${t}: ${prob}% · ${h.time}</title></circle>`;
+    }).join('')).join('');
 
     document.getElementById('prob-chart').innerHTML =
       `<svg viewBox="0 0 ${W} ${H}" width="100%" xmlns="http://www.w3.org/2000/svg" style="display:block;overflow:visible">
-        <defs>${defs}</defs>
-        ${grid}${fills}${lines}${xLabels}
+        <defs>${clip}</defs>
+        ${bands}${grid}${tooltips}${xLabels}
       </svg>`;
   }
 
