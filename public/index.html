@@ -560,6 +560,10 @@
   };
   try { const d = localStorage.getItem(KEY); if (d) S = { ...S, ...JSON.parse(d) }; } catch(e) {}
 
+  // Wrap state as a single string to avoid Firebase key restrictions on player names
+  function fbEncode(state) { return { d: JSON.stringify(state) }; }
+  function fbDecode(raw) { return (raw && raw.d) ? JSON.parse(raw.d) : null; }
+
   let _saveTimer = null;
   function save() {
     try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e) {}
@@ -569,7 +573,7 @@
         await fetch(FIREBASE_URL, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(S),
+          body: JSON.stringify(fbEncode(S)),
         });
       } catch(e) { console.warn('State sync failed:', e); }
     }, 800);
@@ -1396,7 +1400,7 @@
       const r = await fetch(FIREBASE_URL, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(S),
+        body: JSON.stringify(fbEncode(S)),
       });
       if (r.ok) {
         status.textContent = '✓ Synced! Others can now see your data.';
@@ -1416,8 +1420,9 @@
     renderAll(); // render immediately from local cache
     try {
       const r = await fetch(FIREBASE_URL);
-      const data = await r.json();
-      if (data && typeof data === 'object') {
+      const raw = await r.json();
+      const data = fbDecode(raw);
+      if (data) {
         // Shared database has data — use it
         S = { ...S, ...data };
         try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e) {}
@@ -1427,7 +1432,7 @@
         await fetch(FIREBASE_URL, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(S),
+          body: JSON.stringify(fbEncode(S)),
         });
       }
     } catch(e) { console.warn('Could not load shared state:', e); }
