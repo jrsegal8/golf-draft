@@ -1387,9 +1387,17 @@
       const r = await fetch('/api/state');
       const data = await r.json();
       if (data && typeof data === 'object' && !data.error) {
+        // Shared database has data — use it
         S = { ...S, ...data };
         try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e) {}
         renderAll();
+      } else if (S.teams.length > 0) {
+        // Database is empty but we have local data — push it up so everyone sees it
+        await fetch('/api/state', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(S),
+        });
       }
     } catch(e) { console.warn('Could not load shared state:', e); }
   }
