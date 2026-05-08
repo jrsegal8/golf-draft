@@ -553,7 +553,21 @@
     fieldAvgR3: null, fieldAvgR4: null, history: [], probHistory: [],
   };
   try { const d = localStorage.getItem(KEY); if (d) S = { ...S, ...JSON.parse(d) }; } catch(e) {}
-  function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e) {} }
+
+  let _saveTimer = null;
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e) {}
+    clearTimeout(_saveTimer);
+    _saveTimer = setTimeout(async () => {
+      try {
+        await fetch('/api/state', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(S),
+        });
+      } catch(e) { console.warn('State sync failed:', e); }
+    }, 800);
+  }
   function esc(s) { return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;'); }
 
   // ── Avatar helper ──
@@ -1358,12 +1372,29 @@
   }
 
   // ── Init ──
-  renderTeamList(); renderTeamSel(); renderDraft(); renderLB(); renderHistory(); renderProbChart();
-  if (Object.keys(S.scores).length) { computeFieldAverages(); updateBannerStats(); renderScores(); }
-  document.querySelectorAll('.tour-btn').forEach(b => {
-    b.classList.toggle('active', b.textContent.toLowerCase() === S.tour);
-  });
-  document.getElementById('nav-tour-pill').textContent = S.tour.toUpperCase();
+  function renderAll() {
+    renderTeamList(); renderTeamSel(); renderDraft(); renderLB(); renderHistory(); renderProbChart();
+    if (Object.keys(S.scores).length) { computeFieldAverages(); updateBannerStats(); renderScores(); }
+    document.querySelectorAll('.tour-btn').forEach(b => {
+      b.classList.toggle('active', b.textContent.toLowerCase() === S.tour);
+    });
+    document.getElementById('nav-tour-pill').textContent = S.tour.toUpperCase();
+  }
+
+  async function init() {
+    renderAll(); // render immediately from local cache
+    try {
+      const r = await fetch('/api/state');
+      const data = await r.json();
+      if (data && typeof data === 'object' && !data.error) {
+        S = { ...S, ...data };
+        try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e) {}
+        renderAll();
+      }
+    } catch(e) { console.warn('Could not load shared state:', e); }
+  }
+
+  init();
 </script>
 </body>
 </html>
