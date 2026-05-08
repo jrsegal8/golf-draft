@@ -2,8 +2,12 @@
 const _redisUrl = process.env.REDIS_URL || '';
 const _match    = _redisUrl.match(/rediss?:\/\/[^:]*:([^@]+)@([^:/]+)/);
 const KV_URL    = _match ? `https://${_match[2]}` : null;
-const KV_TOKEN  = _match ? _match[1] : null;
+const KV_TOKEN  = _match ? decodeURIComponent(_match[1]) : null;
 const STATE_KEY = 'golf_draft_state';
+
+console.log('REDIS_URL present:', !!process.env.REDIS_URL);
+console.log('KV_URL:', KV_URL);
+console.log('KV_TOKEN present:', !!KV_TOKEN);
 
 async function kvGet() {
   const r = await fetch(`${KV_URL}/get/${STATE_KEY}`, {
