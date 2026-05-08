@@ -541,7 +541,12 @@
     </div>
   </div>
 
-  <div class="footer">Scores via ESPN Public API · No API key required · Refreshed on demand</div>
+  <div class="footer">
+    Scores via ESPN Public API · No API key required · Refreshed on demand
+    &nbsp;·&nbsp;
+    <button id="sync-btn" onclick="syncToFirebase()" style="font-size:11px;color:var(--text-3);border:none;background:none;padding:0;cursor:pointer;text-decoration:underline">Sync data</button>
+    <span id="sync-status" style="font-size:11px;color:var(--text-3);margin-left:6px"></span>
+  </div>
 </div>
 
 <script>
@@ -1380,6 +1385,31 @@
       b.classList.toggle('active', b.textContent.toLowerCase() === S.tour);
     });
     document.getElementById('nav-tour-pill').textContent = S.tour.toUpperCase();
+  }
+
+  async function syncToFirebase() {
+    const btn = document.getElementById('sync-btn');
+    const status = document.getElementById('sync-status');
+    btn.disabled = true;
+    status.textContent = 'Syncing...';
+    try {
+      const r = await fetch(FIREBASE_URL, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(S),
+      });
+      if (r.ok) {
+        status.textContent = '✓ Synced! Others can now see your data.';
+        status.style.color = 'var(--green)';
+      } else {
+        status.textContent = '✗ Sync failed (status ' + r.status + ')';
+        status.style.color = 'var(--red)';
+      }
+    } catch(e) {
+      status.textContent = '✗ Sync failed: ' + e.message;
+      status.style.color = 'var(--red)';
+    }
+    btn.disabled = false;
   }
 
   async function init() {
