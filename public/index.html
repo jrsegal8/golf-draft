@@ -343,6 +343,20 @@
       font-size: 12px; color: var(--text-2); padding: 7px 16px;
       background: var(--amber-bg); border-bottom: 1px solid var(--border);
     }
+    /* ── Scoreboard bar ── */
+    .scoreboard-bar {
+      display: flex; flex-wrap: wrap; gap: 0;
+      padding: 0; margin-bottom: 1rem; overflow: hidden;
+    }
+    .sb-team {
+      display: flex; align-items: center; gap: 7px;
+      padding: 11px 16px; flex: 1; min-width: 140px;
+      border-right: 1px solid var(--border);
+    }
+    .sb-team:last-child { border-right: none; }
+    .sb-name { font-size: 13px; font-weight: 600; color: var(--text); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sb-score { font-size: 18px; font-weight: 800; letter-spacing: -0.5px; white-space: nowrap; }
+
     /* ── Prob chart ── */
     #prob-chart-wrap { margin-bottom: 1.25rem; }
     .prob-card { padding: 16px 18px; }
@@ -989,7 +1003,21 @@
     const hasScores = Object.keys(S.scores).length > 0;
     const winProbs = hasScores ? calcWinProbs(rows.map(r => r.total)) : null;
 
-    el.innerHTML = `
+    const scoreboardHTML = hasScores ? `
+      <div class="card scoreboard-bar">
+        ${rows.map(({t,i,total}, rank) => {
+          const tc = total<0?'score-under':total>0?'score-over':'';
+          const rc = rank===0?'rank-1':rank===1?'rank-2':rank===2?'rank-3':'rank-n';
+          return `<div class="sb-team">
+            <span class="rank-badge ${rc}" style="width:20px;height:20px;font-size:10px">${rank+1}</span>
+            <span class="color-dot" style="background:${COLORS[i%COLORS.length]}"></span>
+            <span class="sb-name">${t}</span>
+            <span class="sb-score ${tc}">${fmtScore(total)}</span>
+          </div>`;
+        }).join('')}
+      </div>` : '';
+
+    el.innerHTML = scoreboardHTML + `
       <div class="card" style="margin-bottom:1rem">
         <div class="status-bar">
           <span><span class="live-dot"></span>ESPN ${S.tour.toUpperCase()} · ${S.tournamentName||'Active tournament'}${S.roundInfo?' · '+S.roundInfo:''}</span>
