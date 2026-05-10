@@ -540,6 +540,13 @@
           ✂️ <b>Missed cut:</b> Player earns R1 + R2 + (field R3 avg + 3 penalty) + (field R4 avg + 3 penalty).
         </div>
       </div>
+      <div class="setup-sec" style="margin-bottom:0; margin-top:24px; border-top:1px solid var(--border); padding-top:20px">
+        <h2 style="color:var(--red)">Danger zone</h2>
+        <p style="font-size:13px; color:var(--text-2); margin-bottom:12px">This will permanently delete all teams, draft picks, scores, and history for everyone.</p>
+        <button onclick="clearAllData()" style="background:var(--red-bg);color:var(--red);border:1px solid var(--red);border-radius:8px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer">
+          Clear all data
+        </button>
+      </div>
     </div>
   </div>
 
@@ -673,6 +680,24 @@
     S.probHistory.push(entry);
     if (S.probHistory.length > 40) S.probHistory.shift();
     save();
+  }
+
+  async function clearAllData() {
+    if (!confirm('Are you sure? This will delete ALL data for everyone — teams, picks, scores, and history. This cannot be undone.')) return;
+    S = {
+      tour: 'pga', teams: [], draft: {}, scores: {},
+      updated: null, roundInfo: '', tournamentName: '', courseName: '',
+      fieldAvgR3: null, fieldAvgR4: null, history: [], probHistory: [],
+    };
+    try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e) {}
+    try {
+      await fetch(FIREBASE_URL, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(fbEncode(S)),
+      });
+    } catch(e) { console.warn('Firebase clear failed:', e); }
+    renderAll();
   }
 
   function clearProbHistory() {
