@@ -191,6 +191,33 @@
 
     /* ── Player grid in leaderboard ── */
     .players-grid { display: grid; grid-template-columns: repeat(3, 1fr); }
+    /* ── Bottom nav (mobile only) ── */
+    .bottom-nav { display: none; }
+
+    @media (max-width: 640px) {
+      .tabs { display: none; }
+      .bottom-nav {
+        display: flex; position: fixed; bottom: 0; left: 0; right: 0;
+        background: var(--bg); border-top: 1px solid var(--border);
+        z-index: 200; height: 62px;
+        padding-bottom: env(safe-area-inset-bottom);
+      }
+      .bnav-item {
+        flex: 1; display: flex; flex-direction: column; align-items: center;
+        justify-content: center; gap: 3px; border: none; background: none;
+        cursor: pointer; padding: 8px 4px; color: var(--text-3);
+        transition: color 0.15s;
+      }
+      .bnav-item.active { color: var(--green); }
+      .bnav-icon { font-size: 20px; line-height: 1; }
+      .bnav-label { font-size: 10px; font-weight: 600; letter-spacing: 0.1px; }
+      .app { padding-bottom: 80px; }
+      .topnav { padding: 0 1rem; }
+      .nav-brand { font-size: 13px; gap: 7px; }
+      .round-info { display: none !important; }
+      .btn-primary { font-size: 12px; padding: 7px 12px; }
+    }
+
     @media(max-width: 580px) {
       .players-grid { grid-template-columns: repeat(2, 1fr); }
       .pcell:nth-child(3n) { border-right: 1px solid var(--border); }
@@ -458,6 +485,25 @@
     <button class="tab" onclick="showTab('history')">📜 History</button>
     <button class="tab" onclick="showTab('setup')">⚙️ Setup</button>
   </div>
+
+  <!-- Mobile bottom nav -->
+  <nav class="bottom-nav">
+    <button class="bnav-item active" onclick="showTab('leaderboard')">
+      <span class="bnav-icon">🏆</span><span class="bnav-label">Leaderboard</span>
+    </button>
+    <button class="bnav-item" onclick="showTab('draft')">
+      <span class="bnav-icon">📋</span><span class="bnav-label">Draft</span>
+    </button>
+    <button class="bnav-item" onclick="showTab('scores')">
+      <span class="bnav-icon">📊</span><span class="bnav-label">Players</span>
+    </button>
+    <button class="bnav-item" onclick="showTab('history')">
+      <span class="bnav-icon">📜</span><span class="bnav-label">History</span>
+    </button>
+    <button class="bnav-item" onclick="showTab('setup')">
+      <span class="bnav-icon">⚙️</span><span class="bnav-label">Setup</span>
+    </button>
+  </nav>
 
   <!-- LEADERBOARD -->
   <div id="tab-leaderboard" class="section active">
@@ -901,10 +947,12 @@
 
   // ── Tabs ──
   function showTab(t) {
-    document.querySelectorAll('.tab').forEach((b,i) =>
-      b.classList.toggle('active', ['leaderboard','draft','scores','history','setup'][i] === t));
+    const order = ['leaderboard','draft','scores','history','setup'];
+    document.querySelectorAll('.tab').forEach((b,i) => b.classList.toggle('active', order[i] === t));
+    document.querySelectorAll('.bnav-item').forEach((b,i) => b.classList.toggle('active', order[i] === t));
     document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
     document.getElementById('tab-'+t).classList.add('active');
+    window.scrollTo(0, 0);
     if (t === 'leaderboard') renderLB();
     if (t === 'draft') renderDraft();
     if (t === 'scores') renderScores();
