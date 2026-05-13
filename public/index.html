@@ -195,6 +195,21 @@
     .bottom-nav { display: none; }
 
     @media (max-width: 640px) {
+      /* Draft board mobile */
+      .board-corner { width: 24px; padding: 4px 2px; }
+      .board-team-inner { padding: 6px 6px; }
+      .board-team-name-row { font-size: 11px; gap: 4px; }
+      .board-drag-hint, .board-picks-count { display: none; }
+      .board-round-td { padding: 4px 2px; }
+      .board-round-num { font-size: 9px; }
+      .board-snake-arrow { font-size: 10px; }
+      .board-pick-inner { padding: 5px 5px; min-height: 38px; gap: 3px; }
+      .board-pick-inner .player-avatar, .board-pick-inner .player-avatar-sm,
+      .board-pick-inner .avatar-fallback, .board-pick-inner .avatar-fallback-sm { display: none !important; }
+      .board-pick-name { font-size: 10px; }
+      .board-pick-score { display: none; }
+      .draft-pos { font-size: 9px; padding: 1px 3px; }
+
       .tabs { display: none; }
       .bottom-nav {
         display: flex; position: fixed; bottom: 0; left: 0; right: 0;
