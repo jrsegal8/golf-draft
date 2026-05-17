@@ -691,10 +691,9 @@
       ? Math.round(parSamples.reduce((a,b) => a+b, 0) / parSamples.length)
       : 72;
 
-    // Field stroke average for R3/R4 — use ALL players who have the score
-    // (since ESPN won't mark cut players; those without R3/R4 missed the cut)
-    const r3s = all.map(p => p.r3).filter(v => v != null);
-    const r4s = all.map(p => p.r4).filter(v => v != null);
+    // Field stroke average for R3/R4 (active players only)
+    const r3s = active.map(p => p.r3).filter(v => v != null);
+    const r4s = active.map(p => p.r4).filter(v => v != null);
     S.fieldAvgR3 = r3s.length ? Math.round(r3s.reduce((a,b)=>a+b,0)/r3s.length) : null;
     S.fieldAvgR4 = r4s.length ? Math.round(r4s.reduce((a,b)=>a+b,0)/r4s.length) : null;
 
@@ -732,11 +731,10 @@
 
   function playerTotal(sc) {
     if (!sc) return 0;
-    const par = S.parPerRound || 72;
-    const missingR3 = sc.r3 == null && S.fieldAvgR3 != null;
-    const missingR4 = sc.r4 == null && S.fieldAvgR4 != null;
-    const r3pen = missingR3 ? (S.fieldAvgR3 + 3 - par) : 0;
-    const r4pen = missingR4 ? (S.fieldAvgR4 + 3 - par) : 0;
+    const missingR3 = sc.r3 == null && S.fieldToParR3 != null;
+    const missingR4 = sc.r4 == null && S.fieldToParR4 != null;
+    const r3pen = missingR3 ? S.fieldToParR3 + 3 : 0;
+    const r4pen = missingR4 ? S.fieldToParR4 + 3 : 0;
     return (sc.toPScore ?? 0) + r3pen + r4pen;
   }
 
