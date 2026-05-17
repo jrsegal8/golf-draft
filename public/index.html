@@ -704,11 +704,11 @@
 
   function effectiveScores(sc) {
     if (!sc) return { r1:null, r2:null, r3:null, r4:null, isCut:false };
-    const isCut = sc.status === 'cut' || sc.status === 'wd';
+    const isCut = sc.status === 'cut' || sc.status === 'wd' || (sc.r3 == null && S.fieldAvgR3 != null);
     return {
       r1: sc.r1, r2: sc.r2,
-      r3: isCut ? (S.fieldAvgR3 != null ? S.fieldAvgR3 + 3 : null) : sc.r3,
-      r4: isCut ? (S.fieldAvgR4 != null ? S.fieldAvgR4 + 3 : null) : sc.r4,
+      r3: (sc.r3 == null && S.fieldAvgR3 != null) ? S.fieldAvgR3 + 3 : sc.r3,
+      r4: (sc.r4 == null && S.fieldAvgR4 != null) ? S.fieldAvgR4 + 3 : sc.r4,
       isCut,
     };
   }
@@ -731,14 +731,11 @@
 
   function playerTotal(sc) {
     if (!sc) return 0;
-    const isCut = sc.status === 'cut' || sc.status === 'wd';
-    if (isCut) {
-      // Penalty = field average toPar + 3 strokes above that, per round missed
-      const r3pen = S.fieldToParR3 != null ? S.fieldToParR3 + 3 : 0;
-      const r4pen = S.fieldToParR4 != null ? S.fieldToParR4 + 3 : 0;
-      return (sc.toPScore ?? 0) + r3pen + r4pen;
-    }
-    return sc.toPScore ?? 0;
+    const missingR3 = sc.r3 == null && S.fieldToParR3 != null;
+    const missingR4 = sc.r4 == null && S.fieldToParR4 != null;
+    const r3pen = missingR3 ? S.fieldToParR3 + 3 : 0;
+    const r4pen = missingR4 ? S.fieldToParR4 + 3 : 0;
+    return (sc.toPScore ?? 0) + r3pen + r4pen;
   }
 
   function calcWinProbs(totals) {
