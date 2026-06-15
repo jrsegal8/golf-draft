@@ -452,6 +452,12 @@
       text-align: center; font-size: 12px; color: var(--text-3);
       margin-top: 2.5rem; padding-top: 1rem; border-top: 1px solid var(--border);
     }
+    body:not(.is-admin) .admin-only { display: none !important; }
+    .admin-lock-btn {
+      font-size: 18px; border: none; background: none; cursor: pointer;
+      padding: 4px 6px; color: var(--text-3); transition: color 0.15s; line-height: 1;
+    }
+    .admin-lock-btn:hover { color: var(--text); }
   </style>
 </head>
 <body>
@@ -468,6 +474,7 @@
   <div class="nav-right">
     <span class="round-info" id="nav-round"></span>
     <button class="btn-primary" id="refresh-btn" onclick="refreshScores()">⟳ Refresh scores</button>
+    <button class="admin-lock-btn" id="admin-lock-btn" onclick="toggleAdmin()" title="Admin login">🔒</button>
   </div>
 </nav>
 
@@ -498,7 +505,7 @@
     <button class="tab" onclick="showTab('draft')">📋 Draft</button>
     <button class="tab" onclick="showTab('scores')">📊 All players</button>
     <button class="tab" onclick="showTab('history')">📜 History</button>
-    <button class="tab" onclick="showTab('setup')">⚙️ Setup</button>
+    <button class="tab admin-only" onclick="showTab('setup')">⚙️ Setup</button>
   </div>
 
   <!-- Mobile bottom nav -->
@@ -515,7 +522,7 @@
     <button class="bnav-item" onclick="showTab('history')">
       <span class="bnav-icon">📜</span><span class="bnav-label">History</span>
     </button>
-    <button class="bnav-item" onclick="showTab('setup')">
+    <button class="bnav-item admin-only" onclick="showTab('setup')">
       <span class="bnav-icon">⚙️</span><span class="bnav-label">Setup</span>
     </button>
   </nav>
@@ -552,7 +559,7 @@
 
   <!-- DRAFT -->
   <div id="tab-draft" class="section">
-    <div class="assign-bar">
+    <div class="assign-bar admin-only">
       <div class="player-select-wrap">
         <input type="text" id="player-search" placeholder="Search players..." autocomplete="off" oninput="filterPlayers()" />
         <select id="player-sel"><option value="">— select a player (load scores first) —</option></select>
@@ -561,7 +568,7 @@
       <button class="btn-green" onclick="assignPlayer()">Add player</button>
     </div>
     <div id="draft-grid"></div>
-    <div style="text-align:center;margin-top:.75rem">
+    <div class="admin-only" style="text-align:center;margin-top:.75rem">
       <button onclick="clearDraft()" style="font-size:12px;color:var(--text-3);border:none;background:none;padding:4px 8px">Clear all picks</button>
     </div>
   </div>
@@ -618,7 +625,7 @@
   <div class="footer">
     Scores via ESPN Public API · No API key required · Refreshed on demand
     &nbsp;·&nbsp;
-    <button id="sync-btn" onclick="syncToFirebase()" style="font-size:11px;color:var(--text-3);border:none;background:none;padding:0;cursor:pointer;text-decoration:underline">Sync data</button>
+    <button id="sync-btn" class="admin-only" onclick="syncToFirebase()" style="font-size:11px;color:var(--text-3);border:none;background:none;padding:0;cursor:pointer;text-decoration:underline">Sync data</button>
     <span id="sync-status" style="font-size:11px;color:var(--text-3);margin-left:6px"></span>
   </div>
 </div>
@@ -626,6 +633,36 @@
 <script>
   const COLORS = ['#1D9E75','#185FA5','#C0780F','#C43E7A','#6B5FD8','#C44A1A','#4E8A12','#C43535'];
   const KEY = 'golf_draft_v6';
+  const ADMIN_PIN = '7291';
+  let isAdmin = sessionStorage.getItem('golf_admin') === '1';
+
+  function applyAdminMode() {
+    document.body.classList.toggle('is-admin', isAdmin);
+    const btn = document.getElementById('admin-lock-btn');
+    if (btn) { btn.textContent = isAdmin ? '🔓' : '🔒'; btn.title = isAdmin ? 'Admin — click to lock' : 'Admin login'; }
+  }
+
+  function toggleAdmin() {
+    if (isAdmin) {
+      if (confirm('Lock admin mode? You will no longer be able to edit teams or picks.')) {
+        isAdmin = false;
+        sessionStorage.removeItem('golf_admin');
+        applyAdminMode();
+        renderAll();
+      }
+    } else {
+      const pin = prompt('Enter admin PIN:');
+      if (pin === null) return;
+      if (pin === ADMIN_PIN) {
+        isAdmin = true;
+        sessionStorage.setItem('golf_admin', '1');
+        applyAdminMode();
+        renderAll();
+      } else {
+        alert('Incorrect PIN.');
+      }
+    }
+  }
   const FIREBASE_URL = 'https://golf-draft-1e4b2-default-rtdb.firebaseio.com/state.json';
   let S = {
     tour: 'pga', teams: [], draft: {}, scores: {},
@@ -1004,7 +1041,7 @@
             <span class="color-dot" style="background:${COLORS[i%COLORS.length]}"></span>
             <span style="font-weight:600">${t}</span>
             <span style="font-size:11px;color:var(--text-3);margin-left:4px">${(S.draft[t]||[]).length}/6 players</span>
-            <button class="rm" onclick="removeTeam('${esc(t)}')">×</button>
+            ${isAdmin ? `<button class="rm" onclick="removeTeam('${esc(t)}')">×</button>` : ''}
           </div>`).join('')
       : '<div class="info-box" style="margin:0">No teams yet — add your first team above!</div>';
   }
@@ -1065,17 +1102,17 @@
 
     const headers = S.teams.map((t, i) => {
       const picks = (S.draft[t] || []).filter(Boolean).length;
-      return `<th class="board-team-th" draggable="true"
+      return `<th class="board-team-th" ${isAdmin ? `draggable="true"
           ondragstart="boardDragStart(event,${i})" ondragend="boardDragEnd(event)"
           ondragover="boardDragOver(event)" ondragleave="boardDragLeave(event)"
-          ondrop="boardDrop(event,${i})">
+          ondrop="boardDrop(event,${i})"` : ''}>
         <div class="board-team-inner">
           <div class="board-team-name-row">
             <span class="color-dot" style="background:${COLORS[i%COLORS.length]}"></span>
             ${t}
             <span class="board-picks-count">${picks}/6</span>
           </div>
-          <div class="board-drag-hint">⠿ drag to reorder</div>
+          ${isAdmin ? '<div class="board-drag-hint">⠿ drag to reorder</div>' : ''}
         </div>
       </th>`;
     }).join('');
@@ -1092,18 +1129,20 @@
             ? `<span class="pill pill-cut">CUT</span>`
             : `<span class="pill ${pillCls(sc?.toPScore, sc?.status)}">${fmtScore(sc?.toPScore)}</span>`) : '';
           return `<td class="board-pick-td">
-            <div class="board-pick-inner" onclick="quickAssign('${esc(t)}')">
+            <div class="board-pick-inner" ${isAdmin ? `onclick="quickAssign('${esc(t)}')"` : ''}>
               ${avatarHTML(sc?.photo||null, player, 'sm')}
               <div class="board-pick-info">
                 <div class="board-pick-name"><span class="draft-pos">${draftPos(t, round)}</span>${flagHTML(sc?.flag||null)}${player}</div>
                 <div class="board-pick-score">${pill}</div>
               </div>
-              <button class="rm-btn" onclick="event.stopPropagation();removeFromTeam('${esc(t)}','${esc(player)}')">×</button>
+              ${isAdmin ? `<button class="rm-btn" onclick="event.stopPropagation();removeFromTeam('${esc(t)}','${esc(player)}')">×</button>` : ''}
             </div>
           </td>`;
         }
         return `<td class="board-pick-td">
-          <div class="board-pick-inner empty" onclick="quickAssign('${esc(t)}')">+ pick</div>
+          <div class="board-pick-inner ${isAdmin ? 'empty' : ''}" ${isAdmin ? `onclick="quickAssign('${esc(t)}')"` : ''}>
+            ${isAdmin ? '+ pick' : ''}
+          </div>
         </td>`;
       }).join('');
       return `<tr>
@@ -1121,7 +1160,7 @@
         <tbody>${rows}</tbody>
       </table>
     </div>`;
-    updatePlayerDrop();
+    if (isAdmin) updatePlayerDrop();
   }
 
   function quickAssign(team) {
@@ -1205,7 +1244,7 @@
           <span><span class="live-dot"></span>ESPN ${S.tour.toUpperCase()} · ${S.tournamentName||'Active tournament'}${S.roundInfo?' · '+S.roundInfo:''}</span>
           <div style="display:flex;align-items:center;gap:10px">
             <span style="color:var(--text-3)">Updated ${S.updated||'—'}</span>
-            ${hasScores ? `<button onclick="saveTournament()" style="font-size:11px;padding:4px 10px;border-radius:6px">Save to History</button>` : ''}
+            ${hasScores && isAdmin ? `<button onclick="saveTournament()" style="font-size:11px;padding:4px 10px;border-radius:6px">Save to History</button>` : ''}
           </div>
         </div>
         <div class="avg-note">${avgNote}</div>
@@ -1403,7 +1442,7 @@
           </div>
           <div style="display:flex;align-items:center;gap:8px">
             ${h.winner ? `<span class="hist-winner">🏆 ${h.winner}</span>` : ''}
-            <button class="hist-del" onclick="deleteTournament(${h.id})" title="Remove">×</button>
+            ${isAdmin ? `<button class="hist-del" onclick="deleteTournament(${h.id})" title="Remove">×</button>` : ''}
           </div>
         </div>
         ${h.standings.map((s, rank) => {
@@ -1482,6 +1521,7 @@
 
   // ── Init ──
   function renderAll() {
+    applyAdminMode();
     renderTeamList(); renderTeamSel(); renderDraft(); renderLB(); renderHistory(); renderProbChart();
     if (Object.keys(S.scores).length) { computeFieldAverages(); updateBannerStats(); renderScores(); }
     document.querySelectorAll('.tour-btn').forEach(b => {
@@ -1516,6 +1556,7 @@
   }
 
   async function init() {
+    applyAdminMode();
     renderAll(); // render immediately from local cache
     try {
       const r = await fetch(FIREBASE_URL);
