@@ -30,33 +30,44 @@ export default async function handler(req, res) {
 
     const event = events[0];
     const competition = event.competitions?.[0];
-    const roundNum = competition?.status?.period || null;
     const roundDetail = competition?.status?.type?.shortDetail || event.status?.type?.description || '';
     const competitors = competition?.competitors || [];
 
-    // ── Course name (parallel fetch) ──
-    let courseName = '';
-    try {
-      const coreUrl = `https://sports.core.api.espn.com/v2/sports/golf/leagues/${tour}/events/${event.id}?lang=en&region=us`;
-      const coreResp = await fetch(coreUrl, { headers: { 'User-Agent': 'Mozilla/5.0' } });
-      if (coreResp.ok) {
-        const coreData = await coreResp.json();
-        const course = coreData.courses?.[0];
-        if (course?.name) {
+    // ── Fetch course name + all competitor statuses in parallel ──
+    const eventId = event.id;
+    const coreBase = `https://sports.core.api.espn.com/v2/sports/golf/leagues/${tour}/events/${eventId}`;
+
+    const [courseName, statusMap] = await Promise.all([
+      // Course name
+      fetch(`${coreBase}?lang=en&region=us`, { headers: { 'User-Agent': 'Mozilla/5.0' } })
+        .then(r => r.ok ? r.json() : null)
+        .then(d => {
+          const course = d?.courses?.[0];
+          if (!course?.name) return '';
           const city = course.address?.city || '';
           const state = course.address?.state || '';
-          courseName = city && state ? `${course.name} · ${city}, ${state}` : course.name;
-        }
-      }
-    } catch (_) {}
+          return city && state ? `${course.name} · ${city}, ${state}` : course.name;
+        })
+        .catch(() => ''),
 
+      // All competitor statuses in parallel
+      Promise.all(
+        competitors.map(c =>
+          fetch(`${coreBase}/competitions/${eventId}/competitors/${c.id}/status?lang=en&region=us`, {
+            headers: { 'User-Agent': 'Mozilla/5.0' },
+          })
+            .then(r => r.ok ? r.json() : null)
+            .then(d => [c.id, d?.type?.name || ''])
+            .catch(() => [c.id, ''])
+        )
+      ).then(entries => Object.fromEntries(entries)),
+    ]);
 
     const players = competitors.map((c) => {
       const athlete = c.athlete || {};
       const name = athlete.displayName || athlete.fullName || 'Unknown';
 
       // ── Headshot ──
-      // ESPN provides headshots in athlete.headshot or athlete.flag (for LPGA intl players)
       let photo = null;
       if (athlete.headshot?.href) {
         photo = athlete.headshot.href;
@@ -88,11 +99,11 @@ export default async function handler(req, res) {
         else if (String(toParRaw).toUpperCase() === 'E') toPar = 0;
       }
 
-      // ── Status ──
-      const statusStr = (c.status || '').toLowerCase();
+      // ── Status — use ESPN core API status (STATUS_CUT, STATUS_WD, etc.) ──
+      const coreStatus = (statusMap[c.id] || '').toUpperCase();
       let playerStatus = 'active';
-      if (statusStr.includes('cut')) playerStatus = 'cut';
-      else if (statusStr.includes('wd') || statusStr.includes('withdraw')) playerStatus = 'wd';
+      if (coreStatus.includes('CUT')) playerStatus = 'cut';
+      else if (coreStatus.includes('WD') || coreStatus.includes('WITHDRAW')) playerStatus = 'wd';
 
       // ── Thru ──
       const thru = c.statistics?.find(s => s.name === 'holesCompleted')?.displayValue || null;

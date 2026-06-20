@@ -722,7 +722,7 @@
 
   function effectiveScores(sc) {
     if (!sc) return { r1:null, r2:null, r3:null, r4:null, isCut:false };
-    const isCut = sc.status === 'cut' || sc.status === 'wd' || (sc.r3 == null && S.fieldAvgR3 != null);
+    const isCut = sc.status === 'cut' || sc.status === 'wd';
     const r4complete = Object.values(S.scores).filter(p => p.status === 'active').some(p => p.r4 != null);
     return {
       r1: sc.r1, r2: sc.r2,
@@ -750,7 +750,7 @@
 
   function playerTotal(sc) {
     if (!sc) return 0;
-    const isCut = sc.status === 'cut' || sc.status === 'wd' || (sc.r3 == null && S.fieldAvgR3 != null);
+    const isCut = sc.status === 'cut' || sc.status === 'wd';
     if (isCut) {
       const r3pen = S.fieldAvgR3 != null ? 3 : 0;
       // R4 penalty only once R4 field data is complete (active players have R4 scores)
